@@ -15,6 +15,9 @@ original_user_token.txt
 dec_bytes.bin
 dec_bytes_full.bin
 
+# Castle JS kaynak dosyalari (tersine muhendislik icin kullanildi)
+castle.umd-*.js
+
 # Genel decode çıktıları (kullanıcı tokenı repoya sızmasın)
 *_decoded*.json
 *_metrics*.json

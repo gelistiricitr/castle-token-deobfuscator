@@ -48,15 +48,36 @@ function _invertPnWord(val) {
     return String.fromCharCode(e);
 }
 
-function _recoverTimestampKey(keyB64) {
-    let padded = keyB64;
-    while (padded.length % 4 !== 0) padded += '=';
-    const raw = _b64ToBytes(padded);
+function _recoverTimestampV1(raw) {
     let result = '';
     for (let i = 0; i + 1 < raw.length; i += 2) {
         result += _invertPnWord((raw[i] << 8) | raw[i + 1]);
     }
     return result;
+}
+
+function _recoverTimestampV2(raw) {
+    // lr() inverse: ROR2 -> SUB(0xC481) -> ROR1
+    let result = '';
+    for (let i = 0; i + 1 < raw.length; i += 2) {
+        let v = (raw[i] << 8) | raw[i + 1];
+        v = ((v >>> 2) | (v << 14)) & 0xFFFF;
+        v = (v - 0xC481) & 0xFFFF;
+        v = ((v >>> 1) | (v << 15)) & 0xFFFF;
+        result += String.fromCharCode(v);
+    }
+    return result;
+}
+
+function _recoverTimestampKey(keyB64) {
+    let padded = keyB64;
+    while (padded.length % 4 !== 0) padded += '=';
+    const raw = _b64ToBytes(padded);
+    const v1 = _recoverTimestampV1(raw);
+    if (/^\d{13}$/.test(v1)) return v1;
+    const v2 = _recoverTimestampV2(raw);
+    if (/^\d{13}$/.test(v2)) return v2;
+    return v1;
 }
 
 // --- 2. Castle Akış Şifresi Çözücü (FNV-1a + Xorshift32) ---
@@ -79,6 +100,32 @@ function _decryptStream(ciphertext, keyStr) {
             state = (state ^ (state >>> 17)) >>> 0;
             state = (state ^ (state << 5)) >>> 0;
             state = (state + 0xA4A5C55B) >>> 0;
+        }
+        out[i] = ciphertext[i] ^ ((state >>> ((i & 3) << 3)) & 0xFF);
+    }
+    return out;
+}
+
+// --- 2b. V2 Castle Akış Şifresi (FNV-1a 0x751DAC79 + Xorshift32) ---
+
+function _decryptStreamV2(ciphertext, keyStr) {
+    let h = 0x751DAC79;
+    for (let i = 0; i < keyStr.length; i++) {
+        h = Math.imul(h ^ keyStr.charCodeAt(i), 0x01000193) >>> 0;
+    }
+    if (h === 0) h = 0x9E3779B9;
+
+    let state = (h ^ 0x973D8749) >>> 0;
+    const out = new Uint8Array(ciphertext.length);
+
+    for (let i = 0; i < ciphertext.length; i++) {
+        if ((i & 3) === 0) {
+            state = (state + i + 0x7F039DDA) >>> 0;
+            state = (state + 0x973D8749) >>> 0;
+            state = (state ^ (state << 13)) >>> 0;
+            state = (state ^ (state >>> 17)) >>> 0;
+            state = (state ^ (state << 5)) >>> 0;
+            state = (state + 0x93CF09BD) >>> 0;
         }
         out[i] = ciphertext[i] ^ ((state >>> ((i & 3) << 3)) & 0xFF);
     }
@@ -219,12 +266,17 @@ function decodeCastleToken(tokenStr) {
     let checksum = '';
     for (let i = 8; i < 24; i++) checksum += raw[hOff + i].toString(16).padStart(2, '0');
 
-    // 3. Şifreli veriyi çöz
+    // 3. Versiyon tespiti ve sifre cozme (V1/V2 otomatik algilama)
     const ciphertext = raw.slice(hOff + 24);
-    const decrypted = _decryptStream(ciphertext, tsStr);
-
-    // 4. Raw Deflate aç
-    const decompressed = pako.inflateRaw(decrypted);
+    const isV2 = parts[0] !== 'uq1seNrd';
+    let decrypted, decompressed;
+    try {
+        decrypted = isV2 ? _decryptStreamV2(ciphertext, tsStr) : _decryptStream(ciphertext, tsStr);
+        decompressed = pako.inflateRaw(decrypted);
+    } catch (_) {
+        decrypted = isV2 ? _decryptStream(ciphertext, tsStr) : _decryptStreamV2(ciphertext, tsStr);
+        decompressed = pako.inflateRaw(decrypted);
+    }
 
     // 5. İkili protokolü ayrıştır
     const metrics = _deserialize(decompressed);

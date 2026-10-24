@@ -62,18 +62,36 @@ def invert_pn_word(val: int) -> str:
     e = ((e >> 15) | ((e << 1) & 0xFFFF)) & 0xFFFF
     return chr(e)
 
-def recover_timestamp_key(key_b64: str) -> str:
-    """
-    Base64 kodlanmış Pn(timestamp) dizesinden 13 haneli Unix zaman damgasını kurtarır.
-    """
-    padded = key_b64 + "=" * (-len(key_b64) % 4)
-    raw = base64.b64decode(padded)
+def _recover_v1(raw: bytes) -> str:
     chars = []
     for i in range(0, len(raw), 2):
         if i + 1 < len(raw):
             word = (raw[i] << 8) | raw[i + 1]
             chars.append(invert_pn_word(word))
     return "".join(chars)
+
+def _recover_v2(raw: bytes) -> str:
+    """lr() inverse: ROR2 -> SUB(0xC481) -> ROR1"""
+    chars = []
+    for i in range(0, len(raw), 2):
+        if i + 1 < len(raw):
+            val = (raw[i] << 8) | raw[i + 1]
+            val = ((val >> 2) | (val << 14)) & 0xFFFF
+            val = (val - 0xC481) & 0xFFFF
+            val = ((val >> 1) | (val << 15)) & 0xFFFF
+            chars.append(chr(val))
+    return "".join(chars)
+
+def recover_timestamp_key(key_b64: str) -> str:
+    padded = key_b64 + "=" * (-len(key_b64) % 4)
+    raw = base64.b64decode(padded)
+    v1 = _recover_v1(raw)
+    if v1.isdigit() and len(v1) == 13:
+        return v1
+    v2 = _recover_v2(raw)
+    if v2.isdigit() and len(v2) == 13:
+        return v2
+    return v1
 
 # ---------------------------------------------------------------------------
 # 2. SAF PYTHON AKIŞ ŞİFRESİ ÇÖZÜCÜ (PURE STREAM CIPHER DECRYPTOR)
@@ -120,6 +138,34 @@ def decrypt_castle_stream(ciphertext: bytes, key_str: str) -> bytes:
 
         keystream_byte = (state >> ((i & 3) * 8)) & 0xFF
         out[i] = ciphertext[i] ^ keystream_byte
+
+    return bytes(out)
+
+def decrypt_castle_stream_v2(ciphertext: bytes, key_str: str) -> bytes:
+    """
+    V2 Castle akis sifresi: FNV-1a (offset 0x751DAC79) + Xorshift32.
+    castle.umd-dATz00yt.js tersine muhendisligi ile elde edilmistir.
+    """
+    h = 0x751DAC79
+    FNV_PRIME = 0x01000193
+    for ch in key_str:
+        h = ((h ^ ord(ch)) * FNV_PRIME) & 0xFFFFFFFF
+    if h == 0:
+        h = 0x9E3779B9
+
+    state = (h ^ 0x973D8749) & 0xFFFFFFFF
+    out = bytearray(len(ciphertext))
+
+    for i in range(len(ciphertext)):
+        if (i & 3) == 0:
+            state = (state + i + 0x7F039DDA) & 0xFFFFFFFF
+            state = (state + 0x973D8749) & 0xFFFFFFFF
+            state = (state ^ ((state << 13) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            state = (state ^ (state >> 17)) & 0xFFFFFFFF
+            state = (state ^ ((state << 5) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            state = (state + 0x93CF09BD) & 0xFFFFFFFF
+
+        out[i] = ciphertext[i] ^ ((state >> ((i & 3) * 8)) & 0xFF)
 
     return bytes(out)
 
@@ -327,11 +373,20 @@ class PureCastleDecoder:
         # 4. Şifreli Gövde (Ciphertext)
         ciphertext = raw_bytes[header_offset + 24:]
 
-        # 5. Saf Python ile Akış Şifresini Çöz (Pure Stream Cipher Decrypt)
-        decrypted_bytes = decrypt_castle_stream(ciphertext, timestamp_str)
-
-        # 6. Raw Deflate Açma (Decompress)
-        decompressed_bytes = zlib.decompress(decrypted_bytes, -15)
+        # 5. Versiyon tespiti ve sifre cozme (V1/V2 otomatik algilama)
+        is_v2 = parts[0] != 'uq1seNrd'
+        try:
+            if is_v2:
+                decrypted_bytes = decrypt_castle_stream_v2(ciphertext, timestamp_str)
+            else:
+                decrypted_bytes = decrypt_castle_stream(ciphertext, timestamp_str)
+            decompressed_bytes = zlib.decompress(decrypted_bytes, -15)
+        except zlib.error:
+            if is_v2:
+                decrypted_bytes = decrypt_castle_stream(ciphertext, timestamp_str)
+            else:
+                decrypted_bytes = decrypt_castle_stream_v2(ciphertext, timestamp_str)
+            decompressed_bytes = zlib.decompress(decrypted_bytes, -15)
 
         # 7. İkili Telemetri Protokolü Ayrıştırma (Deserialize)
         raw_metrics = deserialize_castle_payload(decompressed_bytes)
@@ -474,7 +529,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Castle Anti-Bot Token Deobfuscator & Pure Python Decoder (Twitter/X.com uyumlu)"
     )
-    parser.add_argument("token", nargs="?", help="Tam castle_token dizesi (uq1seNrd| ile baslar)")
+    parser.add_argument("token", nargs="?", help="Tam castle_token dizesi (uq1seNrd| veya cNz8rPYH| ile baslar)")
     parser.add_argument("--file", "-f", help="Token iceren metin dosyasinin yolu")
     parser.add_argument("--output", "-o", help="Ciktinin kaydedilecegi JSON dosyasi yolu (opsiyonel)")
     parser.add_argument("--json", "-j", action="store_true", help="Yalnizca saf JSON ciktisi uretir")
