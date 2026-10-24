@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+
+# Kişisel veri içeren decode çıktıları
+decoded_result.json
+decoded_pure_python.json
+user_token_decoded_full.json
+test_out.json
+castle_captured_dollar.json
+user_token_metrics.json
+castle_decoded_report.json
+original_user_token.txt
+
+# Binary intermediate outputs
+dec_bytes.bin
+dec_bytes_full.bin
+
+# Genel decode çıktıları (kullanıcı tokenı repoya sızmasın)
+*_decoded*.json
+*_metrics*.json
+*_captured*.json
+*_report*.json
+*_token*.txt
+*_token*.json
