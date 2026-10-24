@@ -24,6 +24,35 @@ const METRIC_LABELS = {
     551: ["browser_build_version", "Tarayıcı Derleme Sürümü (Build Version)"]
 };
 
+const METRIC_LABELS_V2 = {
+    1: ["token_id", "Token Tanici"],
+    8: ["operating_system", "Isletim Sistemi"],
+    11: ["arch_bits", "Mimari (bit)"],
+    26: ["rendering_engine", "Rendering Motoru"],
+    60: ["gpu_renderer", "GPU Isleyici (Renderer)"],
+    63: ["user_agent", "Kullanici Ajani (User-Agent)"],
+    67: ["locale", "Dil / Yerel Ayar"],
+    101: ["browser_name", "Tarayici Adi"],
+    103: ["browser_vendor", "Tarayici Ureticisi"],
+    135: ["canvas_hash", "Canvas Parmak Izi"],
+    143: ["audio_hash", "Ses Parmak Izi"],
+    161: ["language", "Dil"],
+    224: ["timezone", "Saat Dilimi"],
+    248: ["browser_version", "Tarayici Surumu"],
+    260: ["origin_url", "Kaynak URL"],
+    293: ["accept_languages", "Kabul Edilen Diller"],
+    308: ["page_title", "Sayfa Basligi"],
+    332: ["gpu_vendor", "GPU Ureticisi"],
+    352: ["screen_orientation", "Ekran Yonu"],
+    366: ["platform", "Platform"],
+    368: ["architecture", "Mimari"],
+    406: ["client_ip_address", "IP Adresi"],
+    520: ["site_domain", "Site Domaini"],
+    622: ["session_id", "Oturum Kimligi"],
+    643: ["navigation_type", "Navigasyon Tipi"],
+    668: ["device_uuid", "Cihaz UUID"],
+};
+
 // --- Yardımcı Fonksiyonlar ---
 
 function _b64ToBytes(b64) {
@@ -237,6 +266,42 @@ function _cleanStr(s) {
     return c.trim() || s;
 }
 
+// --- 4b. V2 lr() Decode & IP Donusturucu ---
+
+function _lrDecodeValue(s) {
+    if (typeof s !== 'string' || s.length < 4) return s;
+    let bin;
+    try {
+        let padded = s;
+        while (padded.length % 4 !== 0) padded += '=';
+        bin = atob(padded);
+    } catch (_) { return s; }
+    if (bin.length < 2 || bin.length % 2 !== 0) return s;
+    let result = '';
+    for (let i = 0; i < bin.length; i += 2) {
+        let v = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+        v = ((v >>> 2) | (v << 14)) & 0xFFFF;
+        v = (v - 0xC481) & 0xFFFF;
+        v = ((v >>> 1) | (v << 15)) & 0xFFFF;
+        result += String.fromCharCode(v);
+    }
+    for (let i = 0; i < result.length; i++) {
+        const c = result.charCodeAt(i);
+        if (c < 32 || c > 126) return s;
+    }
+    return result;
+}
+
+function _uint32ToIp(val) {
+    if (typeof val !== 'number') return String(val);
+    const v = val >>> 0;
+    return ((v >>> 24) & 0xFF) + '.' + ((v >>> 16) & 0xFF) + '.' + ((v >>> 8) & 0xFF) + '.' + (v & 0xFF);
+}
+
+function _isBoolTrue(arr, idx) {
+    return idx < arr.length && arr[idx] === true;
+}
+
 // --- 5. Ana Decode Fonksiyonu ---
 
 function decodeCastleToken(tokenStr) {
@@ -278,38 +343,83 @@ function decodeCastleToken(tokenStr) {
         decompressed = pako.inflateRaw(decrypted);
     }
 
-    // 5. İkili protokolü ayrıştır
+    // 5. Ikili protokolu ayristir
     const metrics = _deserialize(decompressed);
     const cleaned = metrics.map(_cleanStr);
 
-    // 6. Anahtar alanları çıkar
+    // 6. V2: lr() kodlu stringleri coz, IP donustur
+    if (isV2) {
+        for (let i = 0; i < cleaned.length; i++) {
+            cleaned[i] = _lrDecodeValue(cleaned[i]);
+        }
+        if (cleaned.length > 406 && typeof cleaned[406] === 'number') {
+            cleaned[406] = _uint32ToIp(cleaned[406]);
+        }
+    }
+
     const m = (i, def) => cleaned.length > i && cleaned[i] != null ? cleaned[i] : def;
 
-    const botDetected = !!m(44, false);
-    const webdriver = !!m(22, false);
-    const headless = !!m(143, false);
-    const devtools = !!m(151, false);
-    const cdp = !!m(383, false);
+    // 7. Bot tespiti: sadece gercek boolean True degerleri sayilir
+    const botDetected = _isBoolTrue(cleaned, 44);
+    const webdriver = _isBoolTrue(cleaned, 22);
+    const headless = _isBoolTrue(cleaned, 143);
+    const devtools = _isBoolTrue(cleaned, 151);
+    const cdp = _isBoolTrue(cleaned, 383);
     const isBot = botDetected || webdriver || cdp;
 
     const isoUtc = tsMs ? new Date(tsMs).toISOString() : "Bilinmiyor";
     const localTime = tsMs ? new Date(tsMs).toLocaleString('tr-TR') : "Bilinmiyor";
 
-    const fontSigs = cleaned.length >= 749 ? cleaned.slice(668, 749) : [];
+    const fontSigs = cleaned.length > 668 ? cleaned.slice(668) : [];
 
+    // 8. Versiyona gore alan cikarimi
+    const labels = isV2 ? METRIC_LABELS_V2 : METRIC_LABELS;
     const labeled = {};
-    for (const [idx, [slug, title]] of Object.entries(METRIC_LABELS)) {
+    for (const [idx, [slug, title]] of Object.entries(labels)) {
         const i = parseInt(idx);
         if (i < cleaned.length) {
             labeled[slug] = { index: i, title: title, value: cleaned[i] };
         }
     }
 
+    let clientOs, clientIp, browserBuild, deviceId, userAgent, gpuRenderer;
+    let timezone, locale, pageTitle, originUrl, sessionId, platform;
+
+    if (isV2) {
+        clientOs = m(8, "Bilinmiyor");
+        clientIp = m(406, "Bilinmiyor");
+        const browserName = m(101, "");
+        const browserVer = m(248, "Bilinmiyor");
+        browserBuild = browserName ? browserName + " " + browserVer : browserVer;
+        deviceId = m(668, "Bilinmiyor");
+        userAgent = m(63, "Bilinmiyor");
+        gpuRenderer = m(60, "Bilinmiyor");
+        timezone = m(224, "Bilinmiyor");
+        locale = m(67, "Bilinmiyor");
+        pageTitle = m(308, "");
+        originUrl = m(260, "");
+        sessionId = m(622, "Bilinmiyor");
+        platform = (m(366, "") + " " + m(368, "")).trim();
+    } else {
+        clientOs = m(59, "Bilinmiyor");
+        clientIp = m(406, "Bilinmiyor");
+        browserBuild = m(551, "Bilinmiyor");
+        deviceId = m(163, "Bilinmiyor");
+        userAgent = "Bilinmiyor";
+        gpuRenderer = "Bilinmiyor";
+        timezone = "Bilinmiyor";
+        locale = "Bilinmiyor";
+        pageTitle = "";
+        originUrl = "";
+        sessionId = "Bilinmiyor";
+        platform = m(1, 0) + "x" + m(2, 0);
+    }
+
     return {
         status: "success",
         token_version: parts[0],
         security_verdict: isBot ? "FLAGGED_AS_BOT" : "VERIFIED_GENUINE_HUMAN",
-        security_verdict_tr: isBot ? "ŞÜPHELİ / BOT (Tespit Edildi)" : "GÜVENLİ / GERÇEK KULLANICI (Temiz)",
+        security_verdict_tr: isBot ? "SUPHELI / BOT (Tespit Edildi)" : "GUVENLI / GERCEK KULLANICI (Temiz)",
         timestamp: {
             raw_timestamp_ms: tsMs,
             timestamp_str: String(tsMs),
@@ -325,10 +435,18 @@ function decodeCastleToken(tokenStr) {
         },
         metrics_summary: {
             total_metrics_count: cleaned.length,
-            client_ip: m(406, "Bilinmiyor"),
-            client_os: m(59, "Bilinmiyor"),
-            browser_build: m(551, "Bilinmiyor"),
-            device_id_fingerprint: m(163, "Bilinmiyor"),
+            client_ip: clientIp,
+            client_os: clientOs,
+            browser_build: browserBuild,
+            device_id_fingerprint: deviceId,
+            user_agent: userAgent,
+            gpu_renderer: gpuRenderer,
+            timezone: timezone,
+            locale: locale,
+            page_title: pageTitle,
+            origin_url: originUrl,
+            session_id: sessionId,
+            platform: platform,
             bot_flags: {
                 webdriver_active: webdriver,
                 automation_detected: botDetected,
@@ -339,17 +457,16 @@ function decodeCastleToken(tokenStr) {
             }
         },
         categories: {
-            network: { ip: m(406, "Bilinmiyor") },
+            network: { ip: clientIp },
             device: {
-                os: m(59, "Bilinmiyor"),
-                browser_version: m(551, "Bilinmiyor"),
-                device_fingerprint: m(163, "Bilinmiyor")
-            },
-            screen_and_display: {
-                screen_width: m(1, 0),
-                screen_height: m(2, 0),
-                color_depth: m(9, 24),
-                pixel_ratio: m(16, 1)
+                os: clientOs,
+                browser_version: browserBuild,
+                device_fingerprint: deviceId,
+                user_agent: userAgent,
+                gpu: gpuRenderer,
+                timezone: timezone,
+                locale: locale,
+                platform: platform
             },
             bot_detection: {
                 automation_detected: botDetected,
@@ -358,12 +475,12 @@ function decodeCastleToken(tokenStr) {
                 devtools_open: devtools,
                 cdp_active: cdp
             },
-            font_and_canvas: {
-                canvas_2d_hash: m(6, null),
-                audio_oscillator_hash: m(8, null),
+            fingerprints: {
+                canvas_hash: isV2 ? m(135, null) : m(6, null),
+                audio_hash: isV2 ? m(143, null) : m(8, null),
                 webgl_gpu_code: m(11, null),
                 total_font_probes: fontSigs.length,
-                unique_fonts_detected: new Set(fontSigs).size
+                unique_fonts_detected: new Set(fontSigs.map(String)).size
             }
         },
         labeled_metrics: labeled,

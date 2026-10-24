@@ -328,6 +328,73 @@ METRIC_LABELS = {
     551: ("browser_build_version", "Tarayıcı Derleme Sürümü (Build Version)")
 }
 
+METRIC_LABELS_V2 = {
+    1: ("token_id", "Token Tanici"),
+    8: ("operating_system", "Isletim Sistemi"),
+    11: ("arch_bits", "Mimari (bit)"),
+    26: ("rendering_engine", "Rendering Motoru"),
+    60: ("gpu_renderer", "GPU Isleyici (Renderer)"),
+    63: ("user_agent", "Kullanici Ajani (User-Agent)"),
+    67: ("locale", "Dil / Yerel Ayar"),
+    101: ("browser_name", "Tarayici Adi"),
+    103: ("browser_vendor", "Tarayici Ureticisi"),
+    135: ("canvas_hash", "Canvas Parmak Izi"),
+    143: ("audio_hash", "Ses Parmak Izi"),
+    161: ("language", "Dil"),
+    224: ("timezone", "Saat Dilimi"),
+    248: ("browser_version", "Tarayici Surumu"),
+    260: ("origin_url", "Kaynak URL"),
+    293: ("accept_languages", "Kabul Edilen Diller"),
+    308: ("page_title", "Sayfa Basligi"),
+    332: ("gpu_vendor", "GPU Ureticisi"),
+    352: ("screen_orientation", "Ekran Yonu"),
+    366: ("platform", "Platform"),
+    368: ("architecture", "Mimari"),
+    406: ("client_ip_address", "IP Adresi"),
+    520: ("site_domain", "Site Domaini"),
+    622: ("session_id", "Oturum Kimligi"),
+    643: ("navigation_type", "Navigasyon Tipi"),
+    668: ("device_uuid", "Cihaz UUID"),
+}
+
+def _lr_decode_value(s: Any) -> Any:
+    """lr() kodlu base64 stringini cozumler."""
+    if not isinstance(s, str) or len(s) < 4:
+        return s
+    try:
+        padded = s + '=' * (-len(s) % 4)
+        raw = base64.b64decode(padded)
+    except Exception:
+        return s
+    if len(raw) < 2 or len(raw) % 2 != 0:
+        return s
+    chars = []
+    for i in range(0, len(raw), 2):
+        val = (raw[i] << 8) | raw[i + 1]
+        val = ((val >> 2) | (val << 14)) & 0xFFFF
+        val = (val - 0xC481) & 0xFFFF
+        val = ((val >> 1) | (val << 15)) & 0xFFFF
+        chars.append(chr(val))
+    decoded = ''.join(chars)
+    if decoded and all(32 <= ord(c) <= 126 for c in decoded):
+        return decoded
+    return s
+
+def _uint32_to_ip(val: Any) -> str:
+    if not isinstance(val, int):
+        return str(val)
+    v = val & 0xFFFFFFFF
+    return f"{(v >> 24) & 0xFF}.{(v >> 16) & 0xFF}.{(v >> 8) & 0xFF}.{v & 0xFF}"
+
+def _m(metrics: list, idx: int, default: Any = None) -> Any:
+    return metrics[idx] if idx < len(metrics) and metrics[idx] is not None else default
+
+def _is_bool_true(metrics: list, idx: int) -> bool:
+    if idx >= len(metrics):
+        return False
+    v = metrics[idx]
+    return isinstance(v, bool) and v is True
+
 # ---------------------------------------------------------------------------
 # 5. ANA KONTROL VE ÇÖZÜCÜ SINIFI (PURE CASTLE DECODER)
 # ---------------------------------------------------------------------------
@@ -391,40 +458,78 @@ class PureCastleDecoder:
         # 7. İkili Telemetri Protokolü Ayrıştırma (Deserialize)
         raw_metrics = deserialize_castle_payload(decompressed_bytes)
 
-        # 8. İnsan Tarafından Okunabilir Temizleme & Yapılandırma
+        # 8. Temizleme
         cleaned_metrics = [clean_string_value(v) for v in raw_metrics]
 
-        # Etiketli Veriler
+        # 9. V2: lr() kodlu stringleri coz, IP donustur
+        if is_v2:
+            for i in range(len(cleaned_metrics)):
+                cleaned_metrics[i] = _lr_decode_value(cleaned_metrics[i])
+            if len(cleaned_metrics) > 406 and isinstance(cleaned_metrics[406], int):
+                cleaned_metrics[406] = _uint32_to_ip(cleaned_metrics[406])
+
+        # 10. Versiyona gore alan cikarimi
+        labels = METRIC_LABELS_V2 if is_v2 else METRIC_LABELS
         labeled_metrics = {}
         for idx, val in enumerate(cleaned_metrics):
-            if idx in METRIC_LABELS:
-                slug, title = METRIC_LABELS[idx]
-                labeled_metrics[slug] = {
-                    "index": idx,
-                    "title": title,
-                    "value": val
-                }
+            if idx in labels:
+                slug, title = labels[idx]
+                labeled_metrics[slug] = {"index": idx, "title": title, "value": val}
 
-        # Font imzaları (indeks 668 - 748)
-        font_signatures = []
-        if len(cleaned_metrics) >= 749:
-            font_signatures = cleaned_metrics[668:749]
-
-        client_os = cleaned_metrics[59] if len(cleaned_metrics) > 59 and cleaned_metrics[59] else "Windows"
-        client_ip = cleaned_metrics[406] if len(cleaned_metrics) > 406 and cleaned_metrics[406] else "Bilinmiyor"
-        browser_ver = cleaned_metrics[551] if len(cleaned_metrics) > 551 and cleaned_metrics[551] else "Bilinmiyor"
-        device_guid = cleaned_metrics[163] if len(cleaned_metrics) > 163 and cleaned_metrics[163] else "Bilinmiyor"
-
-        # Bot Tespiti Kararı
-        bot_detected = bool(cleaned_metrics[44]) if len(cleaned_metrics) > 44 else False
-        webdriver_active = bool(cleaned_metrics[22]) if len(cleaned_metrics) > 22 else False
-        headless_browser = bool(cleaned_metrics[143]) if len(cleaned_metrics) > 143 else False
-        devtools_open = bool(cleaned_metrics[151]) if len(cleaned_metrics) > 151 else False
-        cdp_active = bool(cleaned_metrics[383]) if len(cleaned_metrics) > 383 else False
+        if is_v2:
+            client_os = _m(cleaned_metrics, 8, "Bilinmiyor")
+            client_ip = _m(cleaned_metrics, 406, "Bilinmiyor")
+            browser_name = _m(cleaned_metrics, 101, "")
+            browser_ver = _m(cleaned_metrics, 248, "Bilinmiyor")
+            if browser_name:
+                browser_ver = f"{browser_name} {browser_ver}"
+            device_guid = _m(cleaned_metrics, 668, "Bilinmiyor")
+            user_agent = _m(cleaned_metrics, 63, "Bilinmiyor")
+            gpu_renderer = _m(cleaned_metrics, 60, "Bilinmiyor")
+            timezone = _m(cleaned_metrics, 224, "Bilinmiyor")
+            locale = _m(cleaned_metrics, 67, "Bilinmiyor")
+            platform = _m(cleaned_metrics, 366, "Bilinmiyor")
+            arch = _m(cleaned_metrics, 368, "")
+            page_title = _m(cleaned_metrics, 308, "")
+            origin_url = _m(cleaned_metrics, 260, "")
+            canvas_hash = _m(cleaned_metrics, 135, None)
+            audio_hash = _m(cleaned_metrics, 143, None)
+            session_id = _m(cleaned_metrics, 622, "Bilinmiyor")
+            # Bot tespiti: V2'de sadece gercek boolean degerler gecerli
+            bot_detected = _is_bool_true(cleaned_metrics, 44)
+            webdriver_active = _is_bool_true(cleaned_metrics, 22)
+            headless_browser = _is_bool_true(cleaned_metrics, 143)
+            devtools_open = _is_bool_true(cleaned_metrics, 151)
+            cdp_active = _is_bool_true(cleaned_metrics, 383)
+            screen_res = f"{platform} {arch}".strip()
+        else:
+            client_os = _m(cleaned_metrics, 59, "Windows")
+            client_ip = _m(cleaned_metrics, 406, "Bilinmiyor")
+            browser_ver = _m(cleaned_metrics, 551, "Bilinmiyor")
+            device_guid = _m(cleaned_metrics, 163, "Bilinmiyor")
+            user_agent = "Bilinmiyor"
+            gpu_renderer = "Bilinmiyor"
+            timezone = "Bilinmiyor"
+            locale = "Bilinmiyor"
+            page_title = ""
+            origin_url = ""
+            canvas_hash = _m(cleaned_metrics, 6, None)
+            audio_hash = _m(cleaned_metrics, 8, None)
+            session_id = "Bilinmiyor"
+            bot_detected = _is_bool_true(cleaned_metrics, 44)
+            webdriver_active = _is_bool_true(cleaned_metrics, 22)
+            headless_browser = _is_bool_true(cleaned_metrics, 143)
+            devtools_open = _is_bool_true(cleaned_metrics, 151)
+            cdp_active = _is_bool_true(cleaned_metrics, 383)
+            w = _m(cleaned_metrics, 1, 0)
+            h = _m(cleaned_metrics, 2, 0)
+            screen_res = f"{w}x{h}" if isinstance(w, int) and isinstance(h, int) else "Bilinmiyor"
 
         is_bot = bot_detected or webdriver_active or cdp_active
         security_verdict = "FLAGGED_AS_BOT" if is_bot else "VERIFIED_GENUINE_HUMAN"
-        security_text = "ŞÜPHELİ / BOT (Tespit Edildi)" if is_bot else "GÜVENLİ / GERÇEK KULLANICI (Temiz)"
+        security_text = "SUPHELI / BOT (Tespit Edildi)" if is_bot else "GUVENLI / GERCEK KULLANICI (Temiz)"
+
+        font_signatures = cleaned_metrics[668:] if len(cleaned_metrics) > 668 else []
 
         summary = {
             "token_status": "SUCCESSFULLY_DECRYPTED",
@@ -441,8 +546,14 @@ class PureCastleDecoder:
                 "operating_system": client_os,
                 "browser_version": browser_ver,
                 "device_guid": device_guid,
-                "screen_resolution": f"{cleaned_metrics[1]}x{cleaned_metrics[2]}" if len(cleaned_metrics) > 2 else "Bilinmiyor",
-                "pixel_ratio": cleaned_metrics[16] if len(cleaned_metrics) > 16 else 1
+                "user_agent": user_agent,
+                "gpu_renderer": gpu_renderer,
+                "timezone": timezone,
+                "locale": locale,
+                "platform": screen_res,
+                "page_title": page_title,
+                "origin_url": origin_url,
+                "session_id": session_id
             },
             "anti_bot_telemetry": {
                 "automation_detected": bot_detected,
@@ -452,11 +563,11 @@ class PureCastleDecoder:
                 "cdp_active": cdp_active
             },
             "graphics_and_fingerprints": {
-                "canvas_2d_hash": cleaned_metrics[6] if len(cleaned_metrics) > 6 else None,
-                "audio_oscillator_hash": cleaned_metrics[8] if len(cleaned_metrics) > 8 else None,
-                "webgl_gpu_code": cleaned_metrics[11] if len(cleaned_metrics) > 11 else None,
+                "canvas_hash": canvas_hash,
+                "audio_hash": audio_hash,
+                "webgl_gpu_code": _m(cleaned_metrics, 11, None),
                 "total_font_probes": len(font_signatures),
-                "unique_fonts_detected": len(set(font_signatures))
+                "unique_fonts_detected": len(set(str(x) for x in font_signatures))
             },
             "protocol_headers": {
                 "segment_1_bytes": seg1_len,
@@ -476,7 +587,7 @@ class PureCastleDecoder:
 # 6. GÖRSEL KONSOL ÇIKTISI VE CLI ARAYÜZÜ
 # ---------------------------------------------------------------------------
 def print_human_readable_report(res: Dict[str, Any]):
-    """Sonuçları konsolda temiz, net ve doğrudan okunabilir formatta gösterir."""
+    """Sonuclari konsolda temiz formatta gosterir."""
     p = res["client_profile"]
     b = res["anti_bot_telemetry"]
     s = res["session_time"]
@@ -487,41 +598,50 @@ def print_human_readable_report(res: Dict[str, Any]):
     sub_border = "-" * 74
 
     print("\n" + border)
-    print("           CASTLE ANTI-BOT TELEMETRI TOKEN RAPORU (SAF PYTHON)           ")
+    print("       CASTLE ANTI-BOT TELEMETRI TOKEN RAPORU")
     print(border)
     print(f" [*] Cozum Durumu     : {res['token_status']} (Protokol: {res['token_version']})")
     print(f" [*] Guvenlik Durumu  : {res['security_verdict_tr']}")
-    print(f" [*] Toplam Metrik    : {res['total_metrics_count']} adet telemetri degiskeni")
+    print(f" [*] Toplam Metrik    : {res['total_metrics_count']} adet")
     print(sub_border)
     print(" 1. ZAMAN VE OTURUM BILGILERI:")
-    print(f"    - Zaman Damgasi   : {s['epoch_ms']} (Unix ms)")
-    print(f"    - UTC Zamani      : {s['utc']}")
-    print(f"    - Yerel Zaman     : {s['local']}")
+    print(f"    Zaman Damgasi   : {s['epoch_ms']} (Unix ms)")
+    print(f"    UTC Zamani      : {s['utc']}")
+    print(f"    Yerel Zaman     : {s['local']}")
     print(sub_border)
-    print(" 2. ISTEMCI VE CIHAZ PROFILI (DOGRADAN OKUNABILIR):")
-    print(f"    - IP Adresi       : {p['ip_address']}")
-    print(f"    - Isletim Sistemi : {p['operating_system']}")
-    print(f"    - Tarayici Surumu : {p['browser_version']}")
-    print(f"    - Ekran Cozunurluk: {p['screen_resolution']} (Piksel Orani: {p['pixel_ratio']})")
-    print(f"    - Cihaz GUID      : {p['device_guid']}")
+    print(" 2. ISTEMCI VE CIHAZ PROFILI:")
+    print(f"    IP Adresi       : {p['ip_address']}")
+    print(f"    Isletim Sistemi : {p['operating_system']}")
+    print(f"    Tarayici        : {p['browser_version']}")
+    print(f"    Platform        : {p['platform']}")
+    print(f"    User-Agent      : {p['user_agent']}")
+    print(f"    Saat Dilimi     : {p['timezone']}")
+    print(f"    Dil / Yerel     : {p['locale']}")
+    print(f"    GPU             : {p['gpu_renderer']}")
+    print(f"    Cihaz GUID      : {p['device_guid']}")
+    print(f"    Oturum ID       : {p['session_id']}")
+    if p.get('page_title'):
+        print(f"    Sayfa Basligi   : {p['page_title']}")
+    if p.get('origin_url'):
+        print(f"    Kaynak URL      : {p['origin_url']}")
     print(sub_border)
     print(" 3. BOT & OTOMASYON TESPIT VERILERI:")
-    print(f"    - Bot / Otomasyon : {'EVET (Riskli!)' if b['automation_detected'] else 'HAYIR (Temiz)'}")
-    print(f"    - WebDriver Aktif : {'EVET (Riskli!)' if b['webdriver_active'] else 'HAYIR (Temiz)'}")
-    print(f"    - Headless Tarayici: {'EVET' if b['headless_detected'] else 'HAYIR'}")
-    print(f"    - DevTools Acik   : {'EVET' if b['devtools_open'] else 'HAYIR'}")
-    print(f"    - CDP Aktif mi    : {'EVET' if b['cdp_active'] else 'HAYIR'}")
+    print(f"    Bot / Otomasyon : {'EVET (Riskli!)' if b['automation_detected'] else 'HAYIR (Temiz)'}")
+    print(f"    WebDriver Aktif : {'EVET (Riskli!)' if b['webdriver_active'] else 'HAYIR (Temiz)'}")
+    print(f"    Headless        : {'EVET' if b['headless_detected'] else 'HAYIR'}")
+    print(f"    DevTools Acik   : {'EVET' if b['devtools_open'] else 'HAYIR'}")
+    print(f"    CDP Aktif mi    : {'EVET' if b['cdp_active'] else 'HAYIR'}")
     print(sub_border)
     print(" 4. DONANIM VE PARMAK IZI BILGILERI:")
-    print(f"    - Canvas 2D Hash  : {g['canvas_2d_hash']}")
-    print(f"    - Ses Osilatoru   : {g['audio_oscillator_hash']}")
-    print(f"    - WebGL GPU Kodu  : {g['webgl_gpu_code']}")
-    print(f"    - Test Edilen Font: {g['total_font_probes']} adet ({g['unique_fonts_detected']} benzersiz imza)")
+    print(f"    Canvas Hash     : {g['canvas_hash']}")
+    print(f"    Ses Hash        : {g['audio_hash']}")
+    print(f"    WebGL Kodu      : {g['webgl_gpu_code']}")
+    print(f"    Font Imzalari   : {g['total_font_probes']} adet ({g['unique_fonts_detected']} benzersiz)")
     print(sub_border)
     print(" 5. PROTOKOL VE SIFRE DETAYLARI:")
-    print(f"    - Sifreli Veri    : {h['total_ciphertext_bytes']} bayt (Segmentler: {h['segment_1_bytes']} + {h['segment_2_bytes']})")
-    print(f"    - Acilmis Veri    : {h['decompressed_payload_bytes']} bayt (Zlib Raw Deflate)")
-    print(f"    - Butunluk Imzasi : {h['signature_hash']}")
+    print(f"    Sifreli Veri    : {h['total_ciphertext_bytes']} bayt (Segmentler: {h['segment_1_bytes']} + {h['segment_2_bytes']})")
+    print(f"    Acilmis Veri    : {h['decompressed_payload_bytes']} bayt (Zlib Raw Deflate)")
+    print(f"    Butunluk Imzasi : {h['signature_hash']}")
     print(border + "\n")
 
 def main():

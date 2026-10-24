@@ -423,12 +423,12 @@
                 <div class="tab-pane active" id="t-overview">
                     <div class="stat-grid">
                         <div class="stat">
-                            <div class="stat-label">Ekran Çözünürlüğü</div>
+                            <div class="stat-label">Platform / Mimari</div>
                             <div class="stat-val" id="d-screen">-</div>
                         </div>
                         <div class="stat">
-                            <div class="stat-label">Renk Derinliği / Piksel Oranı</div>
-                            <div class="stat-val" id="d-display">-</div>
+                            <div class="stat-label">GPU Isleyici</div>
+                            <div class="stat-val" id="d-display" style="font-size:0.7rem;">-</div>
                         </div>
                         <div class="stat">
                             <div class="stat-label">Cihaz Parmak İzi (GUID)</div>
@@ -573,28 +573,28 @@
             document.getElementById('s-ts').textContent = 'UNIX: ' + d.timestamp.raw_timestamp_ms;
             document.getElementById('s-ip').textContent = d.metrics_summary.client_ip;
             document.getElementById('s-os').textContent = d.metrics_summary.client_os;
-            document.getElementById('s-browser').textContent = 'Build: ' + d.metrics_summary.browser_build;
+            document.getElementById('s-browser').textContent = d.metrics_summary.browser_build;
 
             const bot = d.metrics_summary.bot_flags;
             document.getElementById('s-verdict').textContent = bot.consistency_score;
             const vb = document.getElementById('s-verdict-badge');
             if (bot.automation_detected || bot.webdriver_active || bot.cdp_active) {
-                vb.innerHTML = '<span class="dot-sm"></span>BOT TESPİT EDİLDİ';
+                vb.innerHTML = '<span class="dot-sm"></span>BOT TESPIT EDILDI';
                 vb.className = 'badge bad';
             } else {
-                vb.innerHTML = '<span class="dot-sm"></span>GÜVENLİ';
+                vb.innerHTML = '<span class="dot-sm"></span>GUVENLI';
                 vb.className = 'badge ok';
             }
 
             // Overview
-            const scr = d.categories.screen_and_display;
-            document.getElementById('d-screen').textContent = `${scr.screen_width} × ${scr.screen_height}`;
-            document.getElementById('d-display').textContent = `${scr.color_depth}-bit / ${scr.pixel_ratio}x`;
+            const dev = d.categories.device;
+            document.getElementById('d-screen').textContent = d.metrics_summary.platform || 'N/A';
+            document.getElementById('d-display').textContent = dev.gpu || 'N/A';
             document.getElementById('d-guid').textContent = d.metrics_summary.device_id_fingerprint || 'N/A';
 
             const sec = d.security_header;
             const ratio = ((1 - sec.total_ciphertext_bytes / sec.decompressed_payload_bytes) * 100).toFixed(1);
-            document.getElementById('d-compress').textContent = `${sec.total_ciphertext_bytes} → ${sec.decompressed_payload_bytes} B (−${ratio}%)`;
+            document.getElementById('d-compress').textContent = `${sec.total_ciphertext_bytes} -> ${sec.decompressed_payload_bytes} B (-${ratio}%)`;
 
             document.getElementById('d-webdriver').innerHTML = boolBadge(bot.webdriver_active);
             document.getElementById('d-automation').innerHTML = boolBadge(bot.automation_detected);
