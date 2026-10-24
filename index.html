@@ -3,726 +3,660 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Castle Token Deobfuscator & Inspector</title>
+    <title>Castle Token Deobfuscator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="castle_decoder.js"></script>
     <style>
         :root {
-            --bg-base: #0a0d14;
-            --bg-card: rgba(18, 24, 38, 0.75);
-            --bg-card-hover: rgba(26, 34, 52, 0.85);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-glow: rgba(0, 240, 255, 0.25);
-            --primary: #00f0ff;
-            --primary-glow: rgba(0, 240, 255, 0.4);
-            --accent: #7928ca;
-            --accent-glow: rgba(121, 40, 202, 0.4);
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --text-code: #38bdf8;
-            --radius-lg: 16px;
-            --radius-md: 10px;
-            --radius-sm: 6px;
+            --bg-0: #06080f;
+            --bg-1: #0c1021;
+            --bg-2: #121830;
+            --bg-3: #1a2340;
+            --surface: rgba(18,26,52,0.55);
+            --surface-hover: rgba(26,36,64,0.7);
+            --border: rgba(255,255,255,0.06);
+            --border-active: rgba(0,210,255,0.35);
+            --cyan: #00d2ff;
+            --cyan-dim: rgba(0,210,255,0.15);
+            --cyan-glow: rgba(0,210,255,0.5);
+            --purple: #a855f7;
+            --purple-dim: rgba(168,85,247,0.15);
+            --green: #22d3ee;
+            --emerald: #10b981;
+            --emerald-dim: rgba(16,185,129,0.15);
+            --red: #f43f5e;
+            --red-dim: rgba(244,63,94,0.15);
+            --amber: #fbbf24;
+            --amber-dim: rgba(251,191,36,0.12);
+            --text: #eef2ff;
+            --text-2: #94a3b8;
+            --text-3: #64748b;
+            --mono: #67e8f9;
+            --radius: 14px;
+            --radius-sm: 8px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            background-color: var(--bg-base);
-            background-image: 
-                radial-gradient(circle at 15% 10%, rgba(0, 240, 255, 0.08) 0%, transparent 45%),
-                radial-gradient(circle at 85% 80%, rgba(121, 40, 202, 0.1) 0%, transparent 50%);
-            color: var(--text-main);
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg-0);
+            color: var(--text);
             min-height: 100vh;
-            padding: 2rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            overflow-x: hidden;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1280px;
+        .bg-mesh {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 20%, rgba(0,210,255,0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 90% 80%, rgba(168,85,247,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 40% at 50% 50%, rgba(0,210,255,0.03) 0%, transparent 80%);
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 2.5rem;
+        .noise {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.025;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
         }
 
-        .badge-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            background: rgba(0, 240, 255, 0.1);
-            border: 1px solid rgba(0, 240, 255, 0.25);
+        .wrapper {
+            position: relative; z-index: 1;
+            max-width: 1200px; margin: 0 auto;
+            padding: 2.5rem 1.5rem 4rem;
+        }
+
+        /* --- HEADER --- */
+        header { text-align: center; margin-bottom: 3rem; }
+
+        .logo-mark {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 16px; margin-bottom: 1.25rem;
+            background: linear-gradient(135deg, var(--cyan-dim), var(--purple-dim));
+            border: 1px solid rgba(0,210,255,0.2);
             border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--primary);
-            margin-bottom: 1rem;
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            color: var(--cyan);
         }
-
-        .badge-tag::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: var(--primary);
-            box-shadow: 0 0 8px var(--primary);
+        .logo-mark .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan-glow);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%,100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
         }
 
         h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #ffffff 40%, var(--primary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
+            font-size: clamp(2rem, 5vw, 3.25rem);
+            font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #fff 30%, var(--cyan) 70%, var(--purple) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            line-height: 1.1; margin-bottom: 0.75rem;
         }
 
-        p.subtitle {
-            color: var(--text-muted);
-            font-size: 1rem;
-            max-width: 650px;
-            margin: 0 auto;
+        .subtitle {
+            color: var(--text-2); font-size: 1.05rem; line-height: 1.6;
+            max-width: 600px; margin: 0 auto;
         }
 
-        .card {
-            background: var(--bg-card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+        /* --- PANELS --- */
+        .panel {
+            background: var(--surface);
+            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius);
             padding: 1.75rem;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-            margin-bottom: 2rem;
-            transition: border-color 0.3s ease;
+            margin-bottom: 1.75rem;
+            transition: border-color 0.3s;
         }
+        .panel:hover { border-color: rgba(255,255,255,0.1); }
 
-        .card:hover {
-            border-color: var(--border-glow);
+        .panel-title {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.85rem; font-weight: 600; color: var(--text);
+            margin-bottom: 1rem;
         }
+        .panel-title svg { color: var(--cyan); flex-shrink: 0; }
 
-        .input-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.85rem;
-        }
-
-        .input-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-link {
-            background: none;
-            border: none;
-            color: var(--primary);
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            text-decoration: underline;
-            padding: 4px;
-        }
-
-        .btn-link:hover {
-            color: #ffffff;
-        }
-
+        /* --- INPUT --- */
         textarea {
-            width: 100%;
-            height: 120px;
-            background: rgba(10, 13, 20, 0.8);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            color: var(--text-code);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            resize: vertical;
-            transition: all 0.25s ease;
-            outline: none;
+            width: 100%; height: 130px; resize: vertical;
+            background: var(--bg-0); border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1rem 1.15rem; outline: none;
+            color: var(--mono);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            line-height: 1.6;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
-
         textarea:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px var(--primary-glow);
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px var(--cyan-dim), inset 0 0 20px rgba(0,210,255,0.03);
         }
+        textarea::placeholder { color: var(--text-3); }
 
-        .actions-bar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
+        .actions {
+            display: flex; justify-content: flex-end; gap: 0.75rem;
             margin-top: 1rem;
         }
 
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 0.7rem 1.5rem; border: none; border-radius: var(--radius-sm);
+            font-family: 'Inter', sans-serif; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-ghost {
+            background: rgba(255,255,255,0.04); color: var(--text-2);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, #0099ff 100%);
-            color: #000;
-            font-weight: 700;
-            font-size: 0.95rem;
-            padding: 0.75rem 2rem;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            box-shadow: 0 0 20px var(--primary-glow);
-            transition: all 0.25s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            background: linear-gradient(135deg, var(--cyan), #0099ff);
+            color: #000; font-weight: 700;
+            box-shadow: 0 4px 24px rgba(0,210,255,0.3);
         }
-
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 28px var(--primary-glow);
-            filter: brightness(1.1);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 32px rgba(0,210,255,0.45);
+            filter: brightness(1.08);
         }
+        .btn-primary:active { transform: translateY(0); }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 0.75rem 1.5rem;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        /* Results Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 1.25rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: rgba(18, 24, 38, 0.5);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .stat-value {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #fff;
-            font-family: 'JetBrains Mono', monospace;
-            word-break: break-all;
-        }
-
-        .stat-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            width: fit-content;
-        }
-
-        .stat-badge.success {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .stat-badge.danger {
-            background: rgba(239, 68, 68, 0.15);
-            color: var(--danger);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        /* Tabs */
-        .tab-bar {
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 1.5rem;
-            overflow-x: auto;
-        }
-
-        .tab-btn {
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            padding: 0.75rem 1.25rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-
-        .tab-btn:hover {
-            color: var(--text-main);
-        }
-
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Table */
-        .table-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            gap: 1rem;
-        }
-
-        .search-input {
-            background: rgba(10, 13, 20, 0.8);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 0.5rem 1rem;
-            color: #fff;
-            font-size: 0.85rem;
-            width: 300px;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .metrics-table-container {
-            max-height: 520px;
-            overflow-y: auto;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-            text-align: left;
-        }
-
-        th {
-            background: rgba(26, 34, 52, 0.95);
-            color: var(--text-muted);
-            font-weight: 600;
-            padding: 0.75rem 1rem;
-            position: sticky;
-            top: 0;
-            border-bottom: 1px solid var(--border);
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-        }
-
-        td {
-            padding: 0.65rem 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .tag-pill {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.7rem;
-            font-weight: 500;
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-muted);
-        }
-
-        /* JSON pre */
-        pre.json-viewer {
-            background: rgba(10, 13, 20, 0.9);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            color: var(--text-code);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.82rem;
-            max-height: 500px;
-            overflow: auto;
-        }
-
-        /* Loading */
         .spinner {
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(0, 0, 0, 0.2);
+            width: 16px; height: 16px;
+            border: 2.5px solid rgba(0,0,0,0.15);
             border-top-color: #000;
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.7s linear infinite;
             display: none;
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* --- ERROR --- */
+        .error-bar {
+            display: none; padding: 0.85rem 1.15rem;
+            background: var(--red-dim); border: 1px solid rgba(244,63,94,0.3);
+            border-radius: var(--radius-sm); color: #fda4af;
+            font-size: 0.88rem; margin-bottom: 1.5rem;
         }
 
-        #error-banner {
-            display: none;
-            background: rgba(239, 68, 68, 0.15);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5;
-            padding: 1rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
+        /* --- STAT GRID --- */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem; margin-bottom: 1.75rem;
+        }
+
+        .stat {
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1.15rem 1.25rem;
+            display: flex; flex-direction: column; gap: 4px;
+            transition: border-color 0.25s, transform 0.2s;
+        }
+        .stat:hover { border-color: rgba(255,255,255,0.12); transform: translateY(-2px); }
+
+        .stat-label {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 0.68rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-3);
+        }
+        .stat-label svg { width: 13px; height: 13px; color: var(--text-3); }
+
+        .stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.15rem; font-weight: 700; color: #fff;
+            word-break: break-all; line-height: 1.3;
+        }
+        .stat-val.cyan { color: var(--cyan); }
+
+        .stat-sub {
+            font-size: 0.72rem; color: var(--text-3); margin-top: 2px;
+        }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 6px;
+            font-size: 0.7rem; font-weight: 700; width: fit-content;
+            letter-spacing: 0.02em;
+        }
+        .badge.ok { background: var(--emerald-dim); color: var(--emerald); border: 1px solid rgba(16,185,129,0.25); }
+        .badge.bad { background: var(--red-dim); color: var(--red); border: 1px solid rgba(244,63,94,0.25); }
+        .badge.warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+        .badge .dot-sm { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+        /* --- TABS --- */
+        .tabs {
+            display: flex; gap: 4px; padding: 4px;
+            background: rgba(0,0,0,0.25); border-radius: 10px;
+            margin-bottom: 1.5rem; overflow-x: auto;
+        }
+        .tab {
+            flex: 1; min-width: max-content;
+            padding: 0.6rem 1.1rem; border: none; background: none;
+            color: var(--text-3); font-family: 'Inter', sans-serif;
+            font-size: 0.82rem; font-weight: 600;
+            border-radius: 7px; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .tab:hover { color: var(--text-2); background: rgba(255,255,255,0.04); }
+        .tab.active {
+            color: var(--text); background: var(--bg-2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; animation: fadeUp 0.3s ease; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- TABLE --- */
+        .tbl-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+        }
+        .search {
+            background: var(--bg-0); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 1rem; color: #fff;
+            font-size: 0.82rem; width: 280px; outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+        .search:focus { border-color: var(--cyan); }
+
+        .tbl-wrap {
+            max-height: 520px; overflow-y: auto;
+            border: 1px solid var(--border); border-radius: var(--radius-sm);
+        }
+        .tbl-wrap::-webkit-scrollbar { width: 6px; }
+        .tbl-wrap::-webkit-scrollbar-track { background: transparent; }
+        .tbl-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        th {
+            background: var(--bg-2); color: var(--text-3);
+            font-weight: 700; font-size: 0.68rem;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            padding: 0.7rem 1rem; text-align: left;
+            position: sticky; top: 0; z-index: 1;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 0.55rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.025);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+            color: var(--text-2);
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .idx { color: var(--cyan); font-weight: 600; }
+        .type-pill {
+            padding: 1px 7px; border-radius: 4px;
+            font-size: 0.65rem; font-weight: 600;
+            background: rgba(255,255,255,0.06); color: var(--text-3);
+        }
+
+        /* --- JSON VIEWER --- */
+        pre.json {
+            background: var(--bg-0); border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 1.25rem; color: var(--mono);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+            max-height: 500px; overflow: auto; line-height: 1.55;
+            tab-size: 2;
+        }
+        pre.json::-webkit-scrollbar { width: 6px; height: 6px; }
+        pre.json::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        /* --- RESULTS FADE-IN --- */
+        #results { display: none; }
+        #results.show { display: block; animation: fadeUp 0.5s ease; }
+
+        /* --- FOOTER --- */
+        .footer {
+            text-align: center; margin-top: 3rem;
+            font-size: 0.75rem; color: var(--text-3);
+        }
+        .footer a { color: var(--cyan); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 640px) {
+            .wrapper { padding: 1.5rem 1rem 3rem; }
+            .stat-grid { grid-template-columns: 1fr; }
+            .tbl-bar { flex-direction: column; align-items: stretch; }
+            .search { width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="bg-mesh"></div>
+    <div class="noise"></div>
+
+    <div class="wrapper">
         <header>
-            <div class="badge-tag">Castle Intelligence & Security Labs</div>
-            <h1>Castle Token Deobfuscator</h1>
-            <p class="subtitle">Twitter / X.com ve Castle Bot Koruması tarafından üretilen jetonları çözümler, telemetri parametrelerini açık ve okunabilir formatta sunar.</p>
+            <div class="logo-mark">
+                <span class="dot"></span>
+                Castle Intelligence
+            </div>
+            <h1>Token Deobfuscator</h1>
+            <p class="subtitle">Twitter / X.com Castle anti-bot telemetri tokenlarını tarayıcıda çözümler, 749 metriği okunabilir formatta sunar.</p>
         </header>
 
-        <div id="error-banner"></div>
+        <div id="error-bar" class="error-bar"></div>
 
-        <div class="card">
-            <div class="input-header">
-                <div class="input-title">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    Castle Token Girişi
-                </div>
+        <!-- INPUT -->
+        <div class="panel">
+            <div class="panel-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Castle Token Girişi
             </div>
-            <textarea id="token-input" placeholder="uq1seNrd|JAB... ile başlayan Castle Tokenınızı buraya yapıştırın..."></textarea>
-            <div class="actions-bar">
-                <button class="btn-secondary" id="btn-clear">Temizle</button>
-                <button class="btn-primary" id="btn-decode">
+            <textarea id="token-input" placeholder="uq1seNrd|JAB... ile başlayan Castle tokenınızı buraya yapıştırın..."></textarea>
+            <div class="actions">
+                <button class="btn btn-ghost" id="btn-clear">Temizle</button>
+                <button class="btn btn-primary" id="btn-decode">
                     <div class="spinner" id="spinner"></div>
-                    <span id="btn-text">Jetonu Deobfuscate Et</span>
+                    <span id="btn-text">Çözümle</span>
                 </button>
             </div>
         </div>
 
-        <div id="results-section" style="display: none;">
-            <!-- Top Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
+        <!-- RESULTS -->
+        <div id="results">
+            <div class="stat-grid">
+                <div class="stat">
                     <div class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                        Oluşturulma Zamanı (UTC)
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Zaman Damgası (UTC)
                     </div>
-                    <div class="stat-value" id="stat-time" style="font-size: 1rem;">-</div>
-                    <div class="stat-label" id="stat-ts">-</div>
+                    <div class="stat-val" id="s-time" style="font-size:1rem;">-</div>
+                    <div class="stat-sub" id="s-ts">-</div>
                 </div>
-
-                <div class="stat-card">
+                <div class="stat">
                     <div class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                         İstemci IP Adresi
                     </div>
-                    <div class="stat-value" id="stat-ip" style="color: var(--primary);">-</div>
-                    <div class="stat-badge success">Doğrulanmış Ağ</div>
+                    <div class="stat-val cyan" id="s-ip">-</div>
+                    <div class="badge ok" style="margin-top:4px"><span class="dot-sm"></span>Ağ Doğrulandı</div>
                 </div>
-
-                <div class="stat-card">
+                <div class="stat">
                     <div class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
-                        İşletim Sistemi & Sürüm
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        İşletim Sistemi
                     </div>
-                    <div class="stat-value" id="stat-os" style="font-size: 1rem;">-</div>
-                    <div class="stat-label" id="stat-browser">-</div>
+                    <div class="stat-val" id="s-os" style="font-size:1rem;">-</div>
+                    <div class="stat-sub" id="s-browser">-</div>
                 </div>
-
-                <div class="stat-card">
+                <div class="stat">
                     <div class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                        Bot / Otomasyon Tespiti
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        Güvenlik Durumu
                     </div>
-                    <div class="stat-value" id="stat-bot">-</div>
-                    <div class="stat-badge" id="stat-bot-badge">-</div>
+                    <div class="stat-val" id="s-verdict" style="font-size:0.95rem;">-</div>
+                    <div class="badge ok" id="s-verdict-badge" style="margin-top:4px">-</div>
                 </div>
             </div>
 
-            <!-- Tabs Section -->
-            <div class="card">
-                <div class="tab-bar">
-                    <button class="tab-btn active" data-tab="tab-overview">Genel Bakış & Cihaz</button>
-                    <button class="tab-btn" data-tab="tab-table">Tüm Metrikler ($[0..748])</button>
-                    <button class="tab-btn" data-tab="tab-fonts">Font & Canvas İmzaları</button>
-                    <button class="tab-btn" data-tab="tab-json">Ham JSON Verisi</button>
+            <!-- TABS -->
+            <div class="panel" style="padding-bottom:1.5rem;">
+                <div class="tabs">
+                    <button class="tab active" data-tab="t-overview">Genel Bakış</button>
+                    <button class="tab" data-tab="t-metrics">Tüm Metrikler</button>
+                    <button class="tab" data-tab="t-fonts">Font & Canvas</button>
+                    <button class="tab" data-tab="t-json">JSON</button>
                 </div>
 
-                <!-- Tab 1: Overview -->
-                <div class="tab-content active" id="tab-overview">
-                    <div class="stats-grid">
-                        <div class="stat-card">
+                <!-- Overview -->
+                <div class="tab-pane active" id="t-overview">
+                    <div class="stat-grid">
+                        <div class="stat">
                             <div class="stat-label">Ekran Çözünürlüğü</div>
-                            <div class="stat-value" id="det-screen">-</div>
+                            <div class="stat-val" id="d-screen">-</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Renk Derinliği & Piksel Oranı</div>
-                            <div class="stat-value" id="det-display">-</div>
+                        <div class="stat">
+                            <div class="stat-label">Renk Derinliği / Piksel Oranı</div>
+                            <div class="stat-val" id="d-display">-</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Cihaz Donanım Parmak İzi</div>
-                            <div class="stat-value" id="det-device" style="font-size: 0.8rem;">-</div>
+                        <div class="stat">
+                            <div class="stat-label">Cihaz Parmak İzi (GUID)</div>
+                            <div class="stat-val" id="d-guid" style="font-size:0.75rem;">-</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="stat">
                             <div class="stat-label">Sıkıştırma Oranı</div>
-                            <div class="stat-value" id="det-compress">-</div>
+                            <div class="stat-val" id="d-compress">-</div>
+                        </div>
+                    </div>
+                    <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                        <div class="stat">
+                            <div class="stat-label">WebDriver</div>
+                            <div id="d-webdriver">-</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Otomasyon</div>
+                            <div id="d-automation">-</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">Headless</div>
+                            <div id="d-headless">-</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">DevTools</div>
+                            <div id="d-devtools">-</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-label">CDP</div>
+                            <div id="d-cdp">-</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab 2: Table -->
-                <div class="tab-content" id="tab-table">
-                    <div class="table-controls">
-                        <input type="text" class="search-input" id="table-search" placeholder="İndeks veya değere göre filtrele...">
-                        <div class="stat-label" id="table-count">Gösterilen: 749 metrik</div>
+                <!-- Metrics Table -->
+                <div class="tab-pane" id="t-metrics">
+                    <div class="tbl-bar">
+                        <input type="text" class="search" id="tbl-search" placeholder="İndeks veya değere göre filtrele...">
+                        <span class="stat-sub" id="tbl-count">-</span>
                     </div>
-                    <div class="metrics-table-container">
+                    <div class="tbl-wrap">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 80px;">İndeks</th>
-                                    <th style="width: 120px;">Veri Tipi</th>
-                                    <th>Değer</th>
-                                </tr>
-                            </thead>
-                            <tbody id="metrics-tbody"></tbody>
+                            <thead><tr><th style="width:70px">İndeks</th><th style="width:90px">Tip</th><th>Değer</th></tr></thead>
+                            <tbody id="tbl-body"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Tab 3: Fonts & Canvas -->
-                <div class="tab-content" id="tab-fonts">
-                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Castle, tarayıcıda yüklü olan sistem fontlarını ve grafik motorunu ölçmek için 80'den fazla özel kanvas çizim testi yapar.</p>
-                    <div class="metrics-table-container">
+                <!-- Fonts -->
+                <div class="tab-pane" id="t-fonts">
+                    <p style="color:var(--text-3);margin-bottom:1rem;font-size:0.85rem;">Castle, tarayıcıda 80+ sistem fontu ve grafik motoru ölçümü yaparak benzersiz bir parmak izi oluşturur.</p>
+                    <div class="tbl-wrap">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th style="width: 100px;">İndeks</th>
-                                    <th>Raster İmza Hash'i</th>
-                                </tr>
-                            </thead>
-                            <tbody id="fonts-tbody"></tbody>
+                            <thead><tr><th style="width:90px">İndeks</th><th>Raster Hash İmzası</th></tr></thead>
+                            <tbody id="font-body"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Tab 4: JSON -->
-                <div class="tab-content" id="tab-json">
-                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 1rem;">
-                        <button class="btn-secondary" id="btn-copy-json">JSON'u Kopyala</button>
-                        <button class="btn-secondary" id="btn-download-json">JSON İndir</button>
+                <!-- JSON -->
+                <div class="tab-pane" id="t-json">
+                    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:1rem;">
+                        <button class="btn btn-ghost" id="btn-copy" style="padding:0.5rem 1rem;font-size:0.8rem;">Kopyala</button>
+                        <button class="btn btn-ghost" id="btn-dl" style="padding:0.5rem 1rem;font-size:0.8rem;">İndir</button>
                     </div>
-                    <pre class="json-viewer" id="json-viewer"></pre>
+                    <pre class="json" id="json-out"></pre>
                 </div>
             </div>
+        </div>
+
+        <div class="footer">
+            Castle Token Deobfuscator &mdash; Tamamen tarayıcıda çalışır, sunucuya veri gönderilmez.
         </div>
     </div>
 
     <script>
-        let currentDecodedData = null;
+        let decoded = null;
 
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            document.getElementById('token-input').value = '';
-            document.getElementById('results-section').style.display = 'none';
-        });
-
-        // Tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => {
+        // --- Tabs ---
+        document.querySelectorAll('.tab').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
                 btn.classList.add('active');
                 document.getElementById(btn.dataset.tab).classList.add('active');
             });
         });
 
-        // Decode Action
-        document.getElementById('btn-decode').addEventListener('click', async () => {
+        // --- Clear ---
+        document.getElementById('btn-clear').addEventListener('click', () => {
+            document.getElementById('token-input').value = '';
+            document.getElementById('results').classList.remove('show');
+        });
+
+        // --- Decode ---
+        document.getElementById('btn-decode').addEventListener('click', () => {
             const token = document.getElementById('token-input').value.trim();
-            const errBanner = document.getElementById('error-banner');
-            errBanner.style.display = 'none';
+            const err = document.getElementById('error-bar');
+            err.style.display = 'none';
 
             if (!token) {
-                errBanner.innerText = "Lütfen geçerli bir castle_token girin!";
-                errBanner.style.display = 'block';
+                err.textContent = "Lütfen geçerli bir Castle token girin.";
+                err.style.display = 'block';
                 return;
             }
 
             const spinner = document.getElementById('spinner');
             const btnText = document.getElementById('btn-text');
             spinner.style.display = 'inline-block';
-            btnText.innerText = "Çözümleniyor...";
+            btnText.textContent = 'Çözümleniyor...';
 
-            try {
-                const resp = await fetch('/api/decode', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token })
-                });
-                const res = await resp.json();
-
-                if (!res.success) {
-                    throw new Error(res.error || "Token çözümlenemedi");
+            setTimeout(() => {
+                try {
+                    decoded = decodeCastleToken(token);
+                    renderResults(decoded);
+                } catch (e) {
+                    err.textContent = "Hata: " + e.message;
+                    err.style.display = 'block';
+                } finally {
+                    spinner.style.display = 'none';
+                    btnText.textContent = 'Çözümle';
                 }
-
-                currentDecodedData = res.data;
-                renderResults(res.data);
-            } catch (e) {
-                errBanner.innerText = "Hata: " + e.message;
-                errBanner.style.display = 'block';
-            } finally {
-                spinner.style.display = 'none';
-                btnText.innerText = "Jetonu Deobfuscate Et";
-            }
+            }, 50);
         });
 
-        function renderResults(data) {
-            document.getElementById('results-section').style.display = 'block';
-            
-            // Header stats
-            document.getElementById('stat-time').innerText = data.timestamp.iso_utc;
-            document.getElementById('stat-ts').innerText = "UNIX: " + data.timestamp.raw_timestamp_ms;
-            document.getElementById('stat-ip').innerText = data.metrics_summary.client_ip;
-            document.getElementById('stat-os').innerText = data.metrics_summary.client_os;
-            document.getElementById('stat-browser').innerText = "Build: " + data.metrics_summary.browser_build;
+        function esc(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
 
-            const bot = data.metrics_summary.bot_flags;
-            document.getElementById('stat-bot').innerText = bot.consistency_score;
-            const badge = document.getElementById('stat-bot-badge');
-            if (bot.automation_detected || bot.webdriver_active) {
-                badge.innerText = "BOT TESPİT EDİLDİ";
-                badge.className = "stat-badge danger";
+        function boolBadge(val, trueLabel, falseLabel) {
+            return val
+                ? `<span class="badge bad"><span class="dot-sm"></span>${trueLabel || 'EVET'}</span>`
+                : `<span class="badge ok"><span class="dot-sm"></span>${falseLabel || 'HAYIR'}</span>`;
+        }
+
+        function renderResults(d) {
+            document.getElementById('results').classList.add('show');
+
+            // Top stats
+            document.getElementById('s-time').textContent = d.timestamp.iso_utc;
+            document.getElementById('s-ts').textContent = 'UNIX: ' + d.timestamp.raw_timestamp_ms;
+            document.getElementById('s-ip').textContent = d.metrics_summary.client_ip;
+            document.getElementById('s-os').textContent = d.metrics_summary.client_os;
+            document.getElementById('s-browser').textContent = 'Build: ' + d.metrics_summary.browser_build;
+
+            const bot = d.metrics_summary.bot_flags;
+            document.getElementById('s-verdict').textContent = bot.consistency_score;
+            const vb = document.getElementById('s-verdict-badge');
+            if (bot.automation_detected || bot.webdriver_active || bot.cdp_active) {
+                vb.innerHTML = '<span class="dot-sm"></span>BOT TESPİT EDİLDİ';
+                vb.className = 'badge bad';
             } else {
-                badge.innerText = "GÜVENLİ / TEMİZ";
-                badge.className = "stat-badge success";
+                vb.innerHTML = '<span class="dot-sm"></span>GÜVENLİ';
+                vb.className = 'badge ok';
             }
 
-            // Overview Details
-            const scr = data.categories.screen_and_display;
-            document.getElementById('det-screen').innerText = `${scr.screen_width || '?'} x ${scr.screen_height || '?'}`;
-            document.getElementById('det-display').innerText = `${scr.color_depth || '24'}-bit / Ratio: ${scr.pixel_ratio || '1'}`;
-            document.getElementById('det-device').innerText = data.metrics_summary.device_id_fingerprint || "N/A";
+            // Overview
+            const scr = d.categories.screen_and_display;
+            document.getElementById('d-screen').textContent = `${scr.screen_width} × ${scr.screen_height}`;
+            document.getElementById('d-display').textContent = `${scr.color_depth}-bit / ${scr.pixel_ratio}x`;
+            document.getElementById('d-guid').textContent = d.metrics_summary.device_id_fingerprint || 'N/A';
 
-            const sec = data.security_header;
+            const sec = d.security_header;
             const ratio = ((1 - sec.total_ciphertext_bytes / sec.decompressed_payload_bytes) * 100).toFixed(1);
-            document.getElementById('det-compress').innerText = `${sec.total_ciphertext_bytes} B ➔ ${sec.decompressed_payload_bytes} B (-${ratio}%)`;
+            document.getElementById('d-compress').textContent = `${sec.total_ciphertext_bytes} → ${sec.decompressed_payload_bytes} B (−${ratio}%)`;
 
-            // Table metrics
-            const tbody = document.getElementById('metrics-tbody');
+            document.getElementById('d-webdriver').innerHTML = boolBadge(bot.webdriver_active);
+            document.getElementById('d-automation').innerHTML = boolBadge(bot.automation_detected);
+            document.getElementById('d-headless').innerHTML = boolBadge(bot.headless_detected, 'EVET', 'HAYIR');
+            document.getElementById('d-devtools').innerHTML = boolBadge(bot.devtools_open);
+            document.getElementById('d-cdp').innerHTML = boolBadge(bot.cdp_active);
+
+            // Metrics table
+            const tbody = document.getElementById('tbl-body');
             tbody.innerHTML = '';
-            const raw = data.raw_metrics_array;
+            const raw = d.raw_metrics_array;
             for (let i = 0; i < raw.length; i++) {
+                const v = raw[i];
+                const t = v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
                 const tr = document.createElement('tr');
-                const val = raw[i];
-                const typeStr = val === null ? 'null' : Array.isArray(val) ? 'Array' : typeof val;
-                
-                tr.innerHTML = `
-                    <td style="color: var(--primary); font-weight: 600;">$ [${i}]</td>
-                    <td><span class="tag-pill">${typeStr}</span></td>
-                    <td style="word-break: break-all;">${escapeHtml(JSON.stringify(val))}</td>
-                `;
+                tr.innerHTML = `<td class="idx">${i}</td><td><span class="type-pill">${t}</span></td><td style="word-break:break-all">${esc(JSON.stringify(v))}</td>`;
                 tbody.appendChild(tr);
             }
+            document.getElementById('tbl-count').textContent = `${raw.length} metrik`;
 
-            // Fonts table (indices 668 to 748)
-            const ftbody = document.getElementById('fonts-tbody');
-            ftbody.innerHTML = '';
+            // Fonts
+            const fb = document.getElementById('font-body');
+            fb.innerHTML = '';
             for (let i = 668; i < raw.length; i++) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td style="color: var(--text-code);">$ [${i}]</td>
-                    <td><code>${escapeHtml(String(raw[i]))}</code></td>
-                `;
-                ftbody.appendChild(tr);
+                tr.innerHTML = `<td class="idx">${i}</td><td>${esc(String(raw[i]))}</td>`;
+                fb.appendChild(tr);
             }
 
-            // JSON viewer
-            document.getElementById('json-viewer').innerText = JSON.stringify(data, null, 2);
+            // JSON
+            document.getElementById('json-out').textContent = JSON.stringify(d, null, 2);
         }
 
-        function escapeHtml(s) {
-            if (!s) return '';
-            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
-
-        // Search filter
-        document.getElementById('table-search').addEventListener('input', (e) => {
+        // --- Search ---
+        document.getElementById('tbl-search').addEventListener('input', e => {
             const q = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#metrics-tbody tr');
-            let visible = 0;
-            rows.forEach(r => {
-                const match = r.innerText.toLowerCase().includes(q);
-                r.style.display = match ? '' : 'none';
-                if (match) visible++;
+            let n = 0;
+            document.querySelectorAll('#tbl-body tr').forEach(r => {
+                const ok = r.textContent.toLowerCase().includes(q);
+                r.style.display = ok ? '' : 'none';
+                if (ok) n++;
             });
-            document.getElementById('table-count').innerText = `Gösterilen: ${visible} metrik`;
+            document.getElementById('tbl-count').textContent = `${n} metrik`;
         });
 
-        // Copy JSON
-        document.getElementById('btn-copy-json').addEventListener('click', () => {
-            if (currentDecodedData) {
-                navigator.clipboard.writeText(JSON.stringify(currentDecodedData, null, 2));
-                alert("JSON panoya kopyalandı!");
-            }
+        // --- Copy & Download ---
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            if (!decoded) return;
+            navigator.clipboard.writeText(JSON.stringify(decoded, null, 2));
+            const b = document.getElementById('btn-copy');
+            b.textContent = 'Kopyalandı!';
+            setTimeout(() => b.textContent = 'Kopyala', 1500);
         });
 
-        // Download JSON
-        document.getElementById('btn-download-json').addEventListener('click', () => {
-            if (currentDecodedData) {
-                const blob = new Blob([JSON.stringify(currentDecodedData, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `castle_decoded_${currentDecodedData.timestamp.raw_timestamp_ms}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
+        document.getElementById('btn-dl').addEventListener('click', () => {
+            if (!decoded) return;
+            const blob = new Blob([JSON.stringify(decoded, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `castle_decoded_${decoded.timestamp.raw_timestamp_ms}.json`;
+            a.click();
+            URL.revokeObjectURL(a.href);
         });
     </script>
 </body>
