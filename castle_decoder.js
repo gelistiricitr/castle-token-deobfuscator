@@ -194,10 +194,11 @@ function _cleanStr(s) {
 
 function decodeCastleToken(tokenStr) {
     tokenStr = tokenStr.trim();
-    const parts = tokenStr.split('|');
-    if (parts.length !== 2 || parts[0] !== 'uq1seNrd') {
-        throw new Error("Geçersiz Castle token biçimi: Token 'uq1seNrd|' başlığıyla başlamalıdır.");
+    const pipeIdx = tokenStr.indexOf('|');
+    if (pipeIdx < 1 || pipeIdx === tokenStr.length - 1) {
+        throw new Error("Geçersiz Castle token biçimi: Token 'prefix|payload' formatında olmalıdır.");
     }
+    const parts = [tokenStr.substring(0, pipeIdx), tokenStr.substring(pipeIdx + 1)];
 
     // Base64 decode
     let b64 = parts[1].trim();

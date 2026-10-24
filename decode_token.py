@@ -292,9 +292,9 @@ class PureCastleDecoder:
 
     def decode_token(self, token_str: str) -> Dict[str, Any]:
         token_str = token_str.strip()
-        parts = token_str.split('|')
-        if len(parts) != 2 or parts[0] != 'uq1seNrd':
-            raise ValueError("Geçersiz Castle token biçimi: Token 'uq1seNrd|' başlığıyla başlamalıdır.")
+        if '|' not in token_str:
+            raise ValueError("Geçersiz Castle token biçimi: Token 'prefix|payload' formatında olmalıdır.")
+        parts = token_str.split('|', 1)
 
         b64_payload = parts[1].strip()
         b64_padded = b64_payload + '=' * (-len(b64_payload) % 4)
