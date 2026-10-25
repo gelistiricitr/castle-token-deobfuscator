@@ -333,6 +333,42 @@
         .footer a { color: var(--cyan); text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
 
+        .metric-label {
+            font-size: 0.78rem;
+            color: var(--text);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        .metric-val {
+            word-break: break-all;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--mono);
+        }
+        .cat-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        .cat-tokenprotokol { background: rgba(139,92,246,0.2); color: #a78bfa; }
+        .cat-sistem { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .cat-tarayici { background: rgba(34,211,238,0.2); color: #22d3ee; }
+        .cat-ekran { background: rgba(251,191,36,0.2); color: #fbbf24; }
+        .cat-parmakizi { background: rgba(244,63,94,0.2); color: #f43f5e; }
+        .cat-medya { background: rgba(16,185,129,0.2); color: #10b981; }
+        .cat-probtest { background: rgba(249,115,22,0.2); color: #fb923c; }
+        .cat-ag { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .cat-oturum { background: rgba(56,189,248,0.2); color: #38bdf8; }
+        .cat-olay { background: rgba(132,204,22,0.2); color: #a3e635; }
+        .cat-fonttesti { background: rgba(236,72,153,0.2); color: #f472b6; }
+
         @media (max-width: 640px) {
             .wrapper { padding: 1.5rem 1rem 3rem; }
             .stat-grid { grid-template-columns: 1fr; }
@@ -471,7 +507,7 @@
                     </div>
                     <div class="tbl-wrap">
                         <table>
-                            <thead><tr><th style="width:70px">İndeks</th><th style="width:90px">Tip</th><th>Değer</th></tr></thead>
+                            <thead><tr><th style="width:55px">#</th><th style="width:200px">Etiket</th><th style="width:110px">Kategori</th><th style="width:70px">Tip</th><th>Değer</th></tr></thead>
                             <tbody id="tbl-body"></tbody>
                         </table>
                     </div>
@@ -605,22 +641,38 @@
             // Metrics table
             const tbody = document.getElementById('tbl-body');
             tbody.innerHTML = '';
-            const raw = d.raw_metrics_array;
-            for (let i = 0; i < raw.length; i++) {
-                const v = raw[i];
-                const t = v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="idx">${i}</td><td><span class="type-pill">${t}</span></td><td style="word-break:break-all">${esc(JSON.stringify(v))}</td>`;
-                tbody.appendChild(tr);
+            const fmt = d.formatted_metrics || [];
+            if (fmt.length > 0) {
+                for (const m of fmt) {
+                    const tr = document.createElement('tr');
+                    const catClass = 'cat-' + (m.category || '').replace(/[^a-zA-Z]/g,'').toLowerCase().substring(0,12);
+                    tr.innerHTML = `<td class="idx">${m.index}</td><td class="metric-label">${esc(m.label)}</td><td><span class="cat-pill ${catClass}">${esc(m.category)}</span></td><td><span class="type-pill">${m.type}</span></td><td class="metric-val">${esc(String(m.value))}</td>`;
+                    tbody.appendChild(tr);
+                }
+            } else {
+                const raw = d.raw_metrics_array;
+                for (let i = 0; i < raw.length; i++) {
+                    const v = raw[i];
+                    const t = v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td class="idx">${i}</td><td>-</td><td>-</td><td><span class="type-pill">${t}</span></td><td style="word-break:break-all">${esc(JSON.stringify(v))}</td>`;
+                    tbody.appendChild(tr);
+                }
             }
-            document.getElementById('tbl-count').textContent = `${raw.length} metrik`;
+            document.getElementById('tbl-count').textContent = `${fmt.length || d.raw_metrics_array.length} metrik`;
 
             // Fonts
             const fb = document.getElementById('font-body');
             fb.innerHTML = '';
-            for (let i = 668; i < raw.length; i++) {
+            const fontStart = 683, fontEnd = Math.min(764, (fmt.length || d.raw_metrics_array.length) - 1);
+            for (let i = fontStart; i <= fontEnd; i++) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="idx">${i}</td><td>${esc(String(raw[i]))}</td>`;
+                if (fmt.length > i) {
+                    const installed = fmt[i].value && !fmt[i].value.includes('Değil');
+                    tr.innerHTML = `<td class="idx">${i - fontStart}</td><td><span class="badge ${installed ? 'ok' : ''}" style="font-size:0.75rem">${esc(fmt[i].value)}</span></td>`;
+                } else {
+                    tr.innerHTML = `<td class="idx">${i}</td><td>${esc(String(d.raw_metrics_array[i]))}</td>`;
+                }
                 fb.appendChild(tr);
             }
 

@@ -328,33 +328,226 @@ METRIC_LABELS = {
     551: ("browser_build_version", "Tarayıcı Derleme Sürümü (Build Version)")
 }
 
-METRIC_LABELS_V2 = {
-    1: ("token_id", "Token Tanici"),
-    8: ("operating_system", "Isletim Sistemi"),
-    11: ("arch_bits", "Mimari (bit)"),
-    26: ("rendering_engine", "Rendering Motoru"),
-    60: ("gpu_renderer", "GPU Isleyici (Renderer)"),
-    63: ("user_agent", "Kullanici Ajani (User-Agent)"),
-    67: ("locale", "Dil / Yerel Ayar"),
-    101: ("browser_name", "Tarayici Adi"),
-    103: ("browser_vendor", "Tarayici Ureticisi"),
-    135: ("canvas_hash", "Canvas Parmak Izi"),
-    143: ("audio_hash", "Ses Parmak Izi"),
-    161: ("language", "Dil"),
-    224: ("timezone", "Saat Dilimi"),
-    248: ("browser_version", "Tarayici Surumu"),
-    260: ("origin_url", "Kaynak URL"),
-    293: ("accept_languages", "Kabul Edilen Diller"),
-    308: ("page_title", "Sayfa Basligi"),
-    332: ("gpu_vendor", "GPU Ureticisi"),
-    352: ("screen_orientation", "Ekran Yonu"),
-    366: ("platform", "Platform"),
-    368: ("architecture", "Mimari"),
-    406: ("client_ip_address", "IP Adresi"),
-    520: ("site_domain", "Site Domaini"),
-    622: ("session_id", "Oturum Kimligi"),
-    643: ("navigation_type", "Navigasyon Tipi"),
-    668: ("device_uuid", "Cihaz UUID"),
+FONT_PROBE_START = 683
+FONT_PROBE_END = 764
+FONT_NOT_INSTALLED_HEX = {"c3c3c3c3", "f7444444"}
+
+CATEGORY_TR = {
+    "token": "Token/Protokol",
+    "system": "Sistem",
+    "browser": "Tarayici",
+    "screen": "Ekran",
+    "fingerprint": "Parmak Izi",
+    "media": "Medya",
+    "probe": "Prob/Test",
+    "network": "Ag",
+    "session": "Oturum",
+    "event": "Olay",
+    "font": "Font Testi",
+}
+
+METRIC_INFO_V2 = {
+    0: ("config_flags", "Yapilandirma Bayragi", "token"),
+    1: ("token_name", "Token Tanici", "token"),
+    2: ("protocol_ver", "Protokol Parametresi", "token"),
+    4: ("session_fp", "Oturum Parmak Izi", "fingerprint"),
+    5: ("metric_mode", "Metrik Modu", "token"),
+    6: ("canvas_2d_hash", "Canvas 2D Hash", "fingerprint"),
+    7: ("system_hash", "Sistem Hash", "fingerprint"),
+    8: ("os_name", "Isletim Sistemi", "system"),
+    9: ("os_hash", "IS Ailesi Hash", "fingerprint"),
+    10: ("os_ver_hash", "IS Surum Hash", "fingerprint"),
+    11: ("arch_bits", "Mimari Bit Sayisi", "system"),
+    12: ("hw_fp", "Donanim Parmak Izi", "fingerprint"),
+    13: ("cpu_hash", "Islemci Hash", "fingerprint"),
+    14: ("mem_hash", "Bellek Hash", "fingerprint"),
+    15: ("depth_hash", "Renk Derinligi Hash", "fingerprint"),
+    16: ("resolution_pair", "Cozunurluk Hash Cifti", "screen"),
+    17: ("pixel_ratio", "Piksel Orani Hash", "screen"),
+    18: ("tz_hash", "Saat Dilimi Hash", "fingerprint"),
+    19: ("tz_offset_raw", "Zaman Dilimi Ofseti", "system"),
+    20: ("screen_dim", "Ekran Boyutu", "screen"),
+    22: ("webgl_hash_1", "WebGL Hash 1", "fingerprint"),
+    23: ("webgl_hash_2", "WebGL Hash 2", "fingerprint"),
+    24: ("media_cap_1", "Medya Oynatma Yetenegi 1", "media"),
+    25: ("castle_pubkey", "Castle Acik Anahtar", "token"),
+    26: ("render_engine", "Rendering Motoru", "browser"),
+    27: ("engine_hash", "Motor Hash", "fingerprint"),
+    28: ("engine_version", "Motor Surumu", "browser"),
+    36: ("render_flag", "Rendering Bayragi", "browser"),
+    41: ("screen_flag", "Ekran Bayragi", "screen"),
+    43: ("timing_val", "Zamanlama Degeri", "event"),
+    44: ("env_hash", "Ortam Hash", "fingerprint"),
+    52: ("render_mode", "Render Modu", "browser"),
+    53: ("screen_val", "Ekran Degeri", "screen"),
+    60: ("gpu_renderer", "GPU Isleyici", "browser"),
+    61: ("gpu_score", "GPU Skor Degeri", "browser"),
+    63: ("user_agent", "User-Agent", "browser"),
+    67: ("locale", "Dil / Yerel Ayar", "browser"),
+    68: ("cookie_flag", "Cerez Bayragi", "browser"),
+    72: ("storage_pair", "Depolama Hash Cifti", "fingerprint"),
+    75: ("hw_concurrency", "Donanim Eslestirme", "system"),
+    79: ("session_flag", "Oturum Bayragi", "session"),
+    80: ("request_id", "Istek Kimligi", "session"),
+    83: ("audio_val", "Ses Degeri", "media"),
+    88: ("speech_code", "Konusma API Kodu", "media"),
+    96: ("touch_points", "Dokunmatik Noktasi", "event"),
+    97: ("touch_val", "Dokunmatik Degeri", "event"),
+    98: ("event_data", "Olay Verisi", "event"),
+    101: ("browser_name", "Tarayici Adi", "browser"),
+    103: ("browser_vendor", "Tarayici Ureticisi", "browser"),
+    106: ("vis_flag", "Gorunurluk Bayragi", "screen"),
+    107: ("visibility", "Sayfa Gorunurlugu", "screen"),
+    109: ("shader_hash_str", "WebGL Shader Hash", "fingerprint"),
+    111: ("font_metric_hash", "Font Olcum Hash", "fingerprint"),
+    116: ("css_selector_fp", "CSS Secici Parmak Izi", "fingerprint"),
+    117: ("error_probe_type", "Hata Probu: Tip", "probe"),
+    118: ("probe_na", "Prob Sonucu (N/A)", "probe"),
+    127: ("perf_val", "Performans Degeri", "event"),
+    135: ("canvas_fp", "Canvas Parmak Izi", "fingerprint"),
+    137: ("media_cap_2", "Medya Oynatma Yetenegi 2", "media"),
+    139: ("webgl_fp", "WebGL Parmak Izi", "fingerprint"),
+    140: ("webgl_delta", "WebGL Delta Degeri", "fingerprint"),
+    143: ("audio_fp", "Ses Parmak Izi", "fingerprint"),
+    145: ("timer_val", "Zamanlayici Degeri", "event"),
+    148: ("geo_code", "Cografi Kod", "system"),
+    149: ("geo_hash", "Cografi Hash", "fingerprint"),
+    152: ("intl_val", "Uluslararasi Deger", "system"),
+    154: ("intl_id", "Uluslararasi Kimlik", "system"),
+    159: ("date_val", "Tarih Degeri", "system"),
+    161: ("language", "Dil Kodu", "system"),
+    165: ("main_flag", "Ana Bayrak", "token"),
+    166: ("date_probe", "Tarih Probu (TZ Testi)", "probe"),
+    178: ("analytics_code", "Analitik Kodu", "token"),
+    180: ("proxy_pair", "Proxy Hash Cifti", "fingerprint"),
+    182: ("proxy_val", "Proxy Degeri", "fingerprint"),
+    189: ("api_code", "API Kodu", "browser"),
+    192: ("iterator_val", "Iterator Degeri", "fingerprint"),
+    194: ("generator_pair", "Generator Hash Cifti", "fingerprint"),
+    196: ("event_flag", "Olay Bayragi", "event"),
+    203: ("module_val", "Modul Degeri", "fingerprint"),
+    205: ("module_val_2", "Modul Degeri 2", "fingerprint"),
+    207: ("probe_flag", "Prob Bayragi", "probe"),
+    214: ("api_mode", "API Modu", "browser"),
+    215: ("ua_brands", "UA Marka Bilgisi (JSON)", "browser"),
+    217: ("ua_subcode", "UA Alt Kodu", "browser"),
+    221: ("nav_code", "Navigator Kodu", "browser"),
+    224: ("timezone", "Saat Dilimi", "system"),
+    226: ("tz_val", "Saat Dilimi Degeri", "system"),
+    230: ("short_code", "Kisa Kod", "token"),
+    233: ("format_val", "Format Degeri", "fingerprint"),
+    235: ("gpu_renderer_dup", "GPU Isleyici (Kopya)", "browser"),
+    239: ("fp_hex_1", "Parmak Izi Hex 1", "fingerprint"),
+    240: ("webgl_flag", "WebGL Bayragi", "fingerprint"),
+    242: ("browser_ver_detail", "Tarayici Surumu (Detay)", "browser"),
+    244: ("error_probe_prop", "Hata Probu: Property", "probe"),
+    247: ("display_type", "Goruntu Tipi", "screen"),
+    248: ("browser_version", "Tarayici Surumu", "browser"),
+    252: ("screen_px", "Ekran Piksel Degeri", "screen"),
+    253: ("network_flag", "Ag Bayragi", "network"),
+    260: ("origin_url", "Kaynak URL", "network"),
+    269: ("perf_timing", "Performans Zamanlamasi", "event"),
+    272: ("perf_code", "Performans Kodu", "event"),
+    280: ("active_flag", "Aktiflik Bayragi", "session"),
+    284: ("engine_ver_dup", "Motor Surumu (Kopya)", "browser"),
+    293: ("accept_langs", "Kabul Edilen Diller", "browser"),
+    303: ("sw_code", "ServiceWorker Kodu", "browser"),
+    308: ("page_title", "Sayfa Basligi", "network"),
+    311: ("page_code", "Sayfa Kodu", "network"),
+    316: ("adv_flag", "Gelismis Bayrak", "probe"),
+    324: ("os_arch", "IS + Mimari Birlesik", "system"),
+    325: ("timing_val_2", "Zamanlama Degeri 2", "event"),
+    327: ("timing_val_3", "Zamanlama Degeri 3", "event"),
+    332: ("gpu_vendor", "GPU Ureticisi", "browser"),
+    334: ("color_depth", "Renk Derinligi", "screen"),
+    341: ("last_event", "Son Olay Tipi", "event"),
+    342: ("event_code", "Olay Kodu", "event"),
+    343: ("event_timing", "Olay Zamanlamasi", "event"),
+    352: ("screen_orient", "Ekran Yonu", "screen"),
+    353: ("orient_delta", "Yon Deltasi", "screen"),
+    359: ("protocol", "Protokol", "network"),
+    363: ("perf_val_2", "Performans Degeri 2", "event"),
+    365: ("encoded_val", "Kodlu Deger", "token"),
+    366: ("platform", "Platform", "system"),
+    367: ("platform_sub", "Platform Alt Kodu", "system"),
+    368: ("architecture", "Mimari", "system"),
+    373: ("crypto_val", "Kripto Degeri", "fingerprint"),
+    374: ("hw_flag", "Donanim Bayragi", "system"),
+    380: ("hw_val", "Donanim Degeri", "system"),
+    383: ("cdp_flag", "CDP Protokol Bayragi", "probe"),
+    391: ("selenium_code", "Selenium Kodu", "probe"),
+    395: ("headless_code", "Headless Kodu", "probe"),
+    396: ("headless_val", "Headless Degeri", "probe"),
+    397: ("resolution_flag", "Cozunurluk Bayragi", "screen"),
+    398: ("resolution_pair", "Cozunurluk Hash Cifti", "screen"),
+    402: ("short_code_2", "Kisa Kod 2", "token"),
+    403: ("net_timing", "Ag Zamanlamasi", "event"),
+    406: ("ip_hash", "IP Bolgesi Hash", "fingerprint"),
+    416: ("build_id", "Yapi Kimligi (Build ID)", "browser"),
+    418: ("build_val", "Yapi Degeri", "browser"),
+    419: ("error_probe_inv", "Hata Probu: Invocation", "probe"),
+    427: ("misc_flag", "Cesitli Bayrak", "probe"),
+    432: ("misc_val", "Cesitli Deger", "event"),
+    437: ("fp_hex_2", "Parmak Izi Hex 2", "fingerprint"),
+    438: ("feature_flags_bin", "Ozellik Bayrak Dizisi", "probe"),
+    444: ("misc_val_2", "Cesitli Deger 2", "event"),
+    448: ("behavior_code", "Davranis Kodu", "event"),
+    458: ("media_cap_3", "Medya Oynatma Yetenegi 3", "media"),
+    463: ("screen_px_2", "Ekran Piksel Degeri 2", "screen"),
+    466: ("short_flag", "Kisa Bayrak", "token"),
+    469: ("fp_hex_3", "Parmak Izi Hex 3", "fingerprint"),
+    471: ("perf_val_3", "Performans Degeri 3", "event"),
+    473: ("client_ip", "Istemci IP Adresi", "network"),
+    482: ("fp_hex_4", "Parmak Izi Hex 4", "fingerprint"),
+    483: ("perf_val_4", "Performans Degeri 4", "event"),
+    485: ("misc_val_3", "Cesitli Deger 3", "event"),
+    490: ("intl_code", "Intl Kodu", "system"),
+    492: ("fp_hex_5", "Parmak Izi Hex 5", "fingerprint"),
+    496: ("adv_flag_2", "Gelismis Bayrak 2", "probe"),
+    502: ("webrtc_flag", "WebRTC Bayragi", "probe"),
+    517: ("api_code_2", "API Kodu 2", "browser"),
+    520: ("site_domain", "Site Alan Adi", "network"),
+    523: ("site_val", "Site Degeri", "network"),
+    529: ("shader_source", "WebGL Shader Kodu", "probe"),
+    530: ("shader_val", "Shader Degeri", "probe"),
+    533: ("perf_val_5", "Performans Degeri 5", "event"),
+    541: ("nav_code_2", "Navigasyon Kodu", "session"),
+    542: ("url_path", "URL Yolu", "network"),
+    543: ("url_flag", "URL Bayragi", "network"),
+    550: ("config_code", "Yapilandirma Kodu", "token"),
+    561: ("api_code_3", "API Kodu 3", "browser"),
+    567: ("behavior_val", "Davranis Degeri", "event"),
+    568: ("behavior_val_2", "Davranis Degeri 2", "event"),
+    577: ("short_flag_2", "Kisa Bayrak 2", "token"),
+    579: ("proto_probe", "Prototip Dongu Probu", "probe"),
+    581: ("behavior_flag", "Davranis Bayragi", "event"),
+    588: ("timing_delta", "Zamanlama Deltasi", "event"),
+    589: ("timing_val_4", "Zamanlama Degeri 4", "event"),
+    590: ("timing_flag", "Zamanlama Bayragi", "event"),
+    599: ("fp_hex_6", "Parmak Izi Hex 6", "fingerprint"),
+    609: ("secondary_ts", "Ikincil Zaman Damgasi", "session"),
+    617: ("session_code", "Oturum Kodu", "session"),
+    619: ("stack_probe", "Yigin Derinlik Probu", "probe"),
+    622: ("session_id", "Oturum Kimligi", "session"),
+    629: ("session_val", "Oturum Degeri", "session"),
+    631: ("session_id_dup", "Oturum Kimligi (Kopya)", "session"),
+    632: ("session_flag", "Oturum Bayragi", "session"),
+    638: ("ua_dup", "User-Agent (Kopya)", "browser"),
+    643: ("nav_type", "Navigasyon Tipi", "session"),
+    645: ("ua_brands_short", "UA Marka (Kisa JSON)", "browser"),
+    647: ("fp_hex_7", "Parmak Izi Hex 7", "fingerprint"),
+    655: ("final_val", "Son Zamanlama", "event"),
+    658: ("screen_val_2", "Ekran Degeri", "screen"),
+    659: ("webrtc_proto", "WebRTC Protokolu", "probe"),
+    661: ("webrtc_val", "WebRTC Degeri", "probe"),
+    665: ("zero_flags", "Sifir Bayrak Dizisi", "probe"),
+    668: ("device_uuid", "Cihaz UUID", "session"),
+    670: ("short_hash_1", "Kisa Hash 1", "fingerprint"),
+    671: ("final_timing", "Son Zamanlama Degeri", "event"),
+    673: ("final_code", "Son Kod Degeri", "token"),
+    674: ("final_val_2", "Son Deger 2", "event"),
+    677: ("final_timing_2", "Son Zamanlama 2", "event"),
+    679: ("short_hash_2", "Kisa Hash 2", "fingerprint"),
 }
 
 def _lr_decode_value(s: Any) -> Any:
@@ -380,11 +573,16 @@ def _lr_decode_value(s: Any) -> Any:
         return decoded
     return s
 
-def _uint32_to_ip(val: Any) -> str:
-    if not isinstance(val, int):
-        return str(val)
-    v = val & 0xFFFFFFFF
-    return f"{(v >> 24) & 0xFF}.{(v >> 16) & 0xFF}.{(v >> 8) & 0xFF}.{v & 0xFF}"
+def _lr_decode_to_hex(s: Any) -> Optional[str]:
+    """lr() decode sonucu ASCII degilse, orijinal base64'u hex olarak dondurur."""
+    if not isinstance(s, str) or len(s) < 4:
+        return None
+    try:
+        padded = s + '=' * (-len(s) % 4)
+        raw = base64.b64decode(padded)
+        return raw.hex()
+    except Exception:
+        return None
 
 def _m(metrics: list, idx: int, default: Any = None) -> Any:
     return metrics[idx] if idx < len(metrics) and metrics[idx] is not None else default
@@ -394,6 +592,83 @@ def _is_bool_true(metrics: list, idx: int) -> bool:
         return False
     v = metrics[idx]
     return isinstance(v, bool) and v is True
+
+def _format_value(idx: int, value: Any) -> str:
+    """Metrik degerini insan-okunabilir formata donusturur."""
+    if value is None:
+        return "bos"
+    if isinstance(value, bool):
+        return "Evet" if value else "Hayir"
+    if isinstance(value, int):
+        if value == 165:
+            return "-- (olculmedi)"
+        if value == 161:
+            return "-- (mevcut degil)"
+        if value == 173:
+            return "-- (ayrilmis)"
+        if abs(value) > 100_000_000:
+            return f"0x{value & 0xFFFFFFFF:08X}"
+        return str(value)
+    if isinstance(value, float):
+        return str(value)
+    if isinstance(value, str):
+        if FONT_PROBE_START <= idx <= FONT_PROBE_END:
+            hex_val = _lr_decode_to_hex(value)
+            if hex_val and hex_val in FONT_NOT_INSTALLED_HEX:
+                return "Yuklu Degil"
+            elif hex_val:
+                return f"Yuklu (hash: {hex_val})"
+        if len(value) > 200:
+            return value[:200] + "..."
+        return value
+    if isinstance(value, list):
+        items = []
+        for item in value:
+            if isinstance(item, int) and abs(item) > 100_000:
+                items.append(f"0x{item & 0xFFFFFFFF:08X}")
+            else:
+                items.append(str(item))
+        return "[" + ", ".join(items) + "]"
+    return str(value)
+
+def _get_metric_info(idx: int, value: Any, is_v2: bool) -> Tuple[str, str, str]:
+    """Metrik icin (etiket, kategori, formatli_deger) dondurur."""
+    formatted = _format_value(idx, value)
+
+    if is_v2 and idx in METRIC_INFO_V2:
+        _, label, cat = METRIC_INFO_V2[idx]
+        return (label, cat, formatted)
+
+    if is_v2 and FONT_PROBE_START <= idx <= FONT_PROBE_END:
+        return (f"Font Testi #{idx - FONT_PROBE_START}", "font", formatted)
+
+    if not is_v2 and idx in METRIC_LABELS:
+        _, label = METRIC_LABELS[idx]
+        return (label, "system", formatted)
+
+    if value is None:
+        return ("Bos Alan", "token", formatted)
+    if isinstance(value, bool):
+        return ("Bayrak", "probe", formatted)
+    if isinstance(value, int):
+        if value == 165:
+            return ("Olculmedi", "token", formatted)
+        if value == 161:
+            return ("Mevcut Degil", "token", formatted)
+        if value == 173:
+            return ("Ayrilmis", "token", formatted)
+        if abs(value) > 100_000_000:
+            return ("Parmak Izi Bileseni", "fingerprint", formatted)
+        if abs(value) > 999:
+            return ("Sayisal Deger", "event", formatted)
+        return ("Parametre Degeri", "system", formatted)
+    if isinstance(value, str):
+        return ("Metin Degeri", "browser", formatted)
+    if isinstance(value, list):
+        return ("Hash Cifti", "fingerprint", formatted)
+    if isinstance(value, float):
+        return ("Ondalik Deger", "event", formatted)
+    return ("Bilinmeyen", "token", formatted)
 
 # ---------------------------------------------------------------------------
 # 5. ANA KONTROL VE ÇÖZÜCÜ SINIFI (PURE CASTLE DECODER)
@@ -461,24 +736,41 @@ class PureCastleDecoder:
         # 8. Temizleme
         cleaned_metrics = [clean_string_value(v) for v in raw_metrics]
 
-        # 9. V2: lr() kodlu stringleri coz, IP donustur
+        # 9. V2: lr() kodlu stringleri coz
         if is_v2:
             for i in range(len(cleaned_metrics)):
                 cleaned_metrics[i] = _lr_decode_value(cleaned_metrics[i])
-            if len(cleaned_metrics) > 406 and isinstance(cleaned_metrics[406], int):
-                cleaned_metrics[406] = _uint32_to_ip(cleaned_metrics[406])
 
         # 10. Versiyona gore alan cikarimi
-        labels = METRIC_LABELS_V2 if is_v2 else METRIC_LABELS
+        if is_v2:
+            labels_dict = METRIC_INFO_V2
+        else:
+            labels_dict = METRIC_LABELS
         labeled_metrics = {}
         for idx, val in enumerate(cleaned_metrics):
-            if idx in labels:
-                slug, title = labels[idx]
+            if is_v2 and idx in METRIC_INFO_V2:
+                slug, title, cat = METRIC_INFO_V2[idx]
+                labeled_metrics[slug] = {"index": idx, "title": title, "category": cat, "value": val}
+            elif not is_v2 and idx in METRIC_LABELS:
+                slug, title = METRIC_LABELS[idx]
                 labeled_metrics[slug] = {"index": idx, "title": title, "value": val}
+
+        # formatted_metrics: tum metrikler icin etiket/kategori/formatli deger
+        formatted_metrics = []
+        for i, v in enumerate(cleaned_metrics):
+            label, cat, formatted = _get_metric_info(i, v, is_v2)
+            formatted_metrics.append({
+                "index": i,
+                "label": label,
+                "category": CATEGORY_TR.get(cat, cat),
+                "type": type(v).__name__ if v is not None else "null",
+                "value": formatted,
+                "raw": v,
+            })
 
         if is_v2:
             client_os = _m(cleaned_metrics, 8, "Bilinmiyor")
-            client_ip = _m(cleaned_metrics, 406, "Bilinmiyor")
+            client_ip = _m(cleaned_metrics, 473, "Bilinmiyor")
             browser_name = _m(cleaned_metrics, 101, "")
             browser_ver = _m(cleaned_metrics, 248, "Bilinmiyor")
             if browser_name:
@@ -577,6 +869,7 @@ class PureCastleDecoder:
                 "signature_hash": checksum_sig
             },
             "labeled_metrics": labeled_metrics,
+            "formatted_metrics": formatted_metrics,
             "total_metrics_count": len(cleaned_metrics),
             "all_metrics_cleaned": cleaned_metrics
         }
