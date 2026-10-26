@@ -368,6 +368,7 @@
         .cat-oturum { background: rgba(56,189,248,0.2); color: #38bdf8; }
         .cat-olay { background: rgba(132,204,22,0.2); color: #a3e635; }
         .cat-fonttesti { background: rgba(236,72,153,0.2); color: #f472b6; }
+        .cat-sureolcumu { background: rgba(217,119,6,0.2); color: #f59e0b; }
 
         @media (max-width: 640px) {
             .wrapper { padding: 1.5rem 1rem 3rem; }
@@ -388,7 +389,7 @@
                 Castle Intelligence
             </div>
             <h1>Token Deobfuscator</h1>
-            <p class="subtitle">Twitter / X.com Castle anti-bot telemetri tokenlarını tarayıcıda çözümler, 749 metriği okunabilir formatta sunar.</p>
+            <p class="subtitle">Twitter / X.com Castle anti-bot telemetri tokenlarını tarayıcıda çözümler, 765 metriği okunabilir formatta sunar.</p>
         </header>
 
         <div id="error-bar" class="error-bar"></div>
@@ -426,7 +427,7 @@
                         İstemci IP Adresi
                     </div>
                     <div class="stat-val cyan" id="s-ip">-</div>
-                    <div class="badge ok" style="margin-top:4px"><span class="dot-sm"></span>Ağ Doğrulandı</div>
+                    <div class="badge ok" id="s-header-badge" style="margin-top:4px"><span class="dot-sm"></span>Ağ Doğrulandı</div>
                 </div>
                 <div class="stat">
                     <div class="stat-label">
@@ -451,7 +452,7 @@
                 <div class="tabs">
                     <button class="tab active" data-tab="t-overview">Genel Bakış</button>
                     <button class="tab" data-tab="t-metrics">Tüm Metrikler</button>
-                    <button class="tab" data-tab="t-fonts">Font & Canvas</button>
+                    <button class="tab" data-tab="t-fonts">Prob Süreleri & Font</button>
                     <button class="tab" data-tab="t-json">JSON</button>
                 </div>
 
@@ -502,8 +503,33 @@
                 <!-- Metrics Table -->
                 <div class="tab-pane" id="t-metrics">
                     <div class="tbl-bar">
-                        <input type="text" class="search" id="tbl-search" placeholder="İndeks veya değere göre filtrele...">
-                        <span class="stat-sub" id="tbl-count">-</span>
+                        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;flex:1;">
+                            <input type="text" class="search" id="tbl-search" placeholder="İndeks (#473), etiket veya değere göre ara... ( / )">
+                            <select id="cat-filter" class="search" style="width:170px;cursor:pointer;">
+                                <option value="">Tüm Kategoriler</option>
+                                <option value="Token/Protokol">Token/Protokol</option>
+                                <option value="Sistem">Sistem</option>
+                                <option value="Tarayici">Tarayıcı</option>
+                                <option value="Ekran">Ekran</option>
+                                <option value="Parmak Izi">Parmak İzi</option>
+                                <option value="Medya">Medya</option>
+                                <option value="Prob/Test">Prob/Test</option>
+                                <option value="Ag">Ağ</option>
+                                <option value="Oturum">Oturum</option>
+                                <option value="Olay">Olay</option>
+                                <option value="Sure Olcumu">Süre Ölçümü</option>
+                                <option value="Font Testi">Font Testi</option>
+                            </select>
+                            <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--text-2);cursor:pointer;user-select:none;">
+                                <input type="checkbox" id="hide-empty" style="accent-color:var(--cyan);">
+                                Boş / Ölçülmeyenleri Gizle
+                            </label>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <button class="btn btn-ghost" id="btn-export-csv" style="padding:0.4rem 0.8rem;font-size:0.75rem;">CSV İndir</button>
+                            <button class="btn btn-ghost" id="btn-export-md" style="padding:0.4rem 0.8rem;font-size:0.75rem;">MD Kopyala</button>
+                            <span class="stat-sub" id="tbl-count">-</span>
+                        </div>
                     </div>
                     <div class="tbl-wrap">
                         <table>
@@ -515,10 +541,10 @@
 
                 <!-- Fonts -->
                 <div class="tab-pane" id="t-fonts">
-                    <p style="color:var(--text-3);margin-bottom:1rem;font-size:0.85rem;">Castle, tarayıcıda 80+ sistem fontu ve grafik motoru ölçümü yaparak benzersiz bir parmak izi oluşturur.</p>
+                    <p style="color:var(--text-3);margin-bottom:1rem;font-size:0.85rem;">Castle, indeks 683-764 arasında her telemetri toplayıcısının çalışma süresini (ms) ve font probe sonuçlarını kaydeder.</p>
                     <div class="tbl-wrap">
                         <table>
-                            <thead><tr><th style="width:90px">İndeks</th><th>Raster Hash İmzası</th></tr></thead>
+                            <thead><tr><th style="width:60px">#</th><th style="width:260px">Etiket</th><th>Değer / Süre</th></tr></thead>
                             <tbody id="font-body"></tbody>
                         </table>
                     </div>
@@ -542,6 +568,13 @@
 
     <script>
         let decoded = null;
+
+        function normalizeTrCat(s) {
+            return (s || '').replace(/İ/g,'i').replace(/ı/g,'i').replace(/ğ/g,'g')
+                .replace(/ü/g,'u').replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c')
+                .replace(/Ü/g,'u').replace(/Ş/g,'s').replace(/Ö/g,'o').replace(/Ç/g,'c')
+                .replace(/Ğ/g,'g').replace(/[^a-zA-Z]/g,'').toLowerCase();
+        }
 
         // --- Tabs ---
         document.querySelectorAll('.tab').forEach(btn => {
@@ -611,6 +644,22 @@
             document.getElementById('s-os').textContent = d.metrics_summary.client_os;
             document.getElementById('s-browser').textContent = d.metrics_summary.browser_build;
 
+            // Security header validation
+            const sec = d.security_header;
+            const secValid = (sec.segment_1_length + sec.segment_2_length) === sec.total_ciphertext_bytes;
+            const splitValid = Math.abs(sec.segment_1_length - sec.segment_2_length) <= 1;
+            const headerOk = secValid && splitValid;
+            const hdrBadge = document.getElementById('s-header-badge');
+            if (headerOk) {
+                hdrBadge.className = 'badge ok';
+                hdrBadge.style.marginTop = '4px';
+                hdrBadge.innerHTML = '<span class="dot-sm"></span>Başlık Doğrulandı';
+            } else {
+                hdrBadge.className = 'badge warn';
+                hdrBadge.style.marginTop = '4px';
+                hdrBadge.innerHTML = '<span class="dot-sm"></span>Başlık Uyumsuz';
+            }
+
             const bot = d.metrics_summary.bot_flags;
             document.getElementById('s-verdict').textContent = bot.consistency_score;
             const vb = document.getElementById('s-verdict-badge');
@@ -628,9 +677,8 @@
             document.getElementById('d-display').textContent = dev.gpu || 'N/A';
             document.getElementById('d-guid').textContent = d.metrics_summary.device_id_fingerprint || 'N/A';
 
-            const sec = d.security_header;
             const ratio = ((1 - sec.total_ciphertext_bytes / sec.decompressed_payload_bytes) * 100).toFixed(1);
-            document.getElementById('d-compress').textContent = `${sec.total_ciphertext_bytes} -> ${sec.decompressed_payload_bytes} B (-${ratio}%)`;
+            document.getElementById('d-compress').textContent = `${sec.total_ciphertext_bytes} → ${sec.decompressed_payload_bytes} B (-${ratio}%)`;
 
             document.getElementById('d-webdriver').innerHTML = boolBadge(bot.webdriver_active);
             document.getElementById('d-automation').innerHTML = boolBadge(bot.automation_detected);
@@ -638,16 +686,21 @@
             document.getElementById('d-devtools').innerHTML = boolBadge(bot.devtools_open);
             document.getElementById('d-cdp').innerHTML = boolBadge(bot.cdp_active);
 
-            // Metrics table
+            // Metrics table — DocumentFragment for fast render
             const tbody = document.getElementById('tbl-body');
-            tbody.innerHTML = '';
+            const frag = document.createDocumentFragment();
             const fmt = d.formatted_metrics || [];
+
             if (fmt.length > 0) {
                 for (const m of fmt) {
                     const tr = document.createElement('tr');
-                    const catClass = 'cat-' + (m.category || '').replace(/[^a-zA-Z]/g,'').toLowerCase().substring(0,12);
-                    tr.innerHTML = `<td class="idx">${m.index}</td><td class="metric-label">${esc(m.label)}</td><td><span class="cat-pill ${catClass}">${esc(m.category)}</span></td><td><span class="type-pill">${m.type}</span></td><td class="metric-val">${esc(String(m.value))}</td>`;
-                    tbody.appendChild(tr);
+                    const isEmpty = m.raw === null || m.raw === undefined || m.raw === 165 || m.raw === 161 || m.raw === 173;
+                    tr.dataset.category = m.category || '';
+                    tr.dataset.empty = isEmpty ? '1' : '0';
+                    tr.dataset.index = String(m.index);
+                    const catClass = 'cat-' + normalizeTrCat(m.category);
+                    tr.innerHTML = `<td class="idx">#${m.index}</td><td class="metric-label" title="${esc(m.label)}">${esc(m.label)}</td><td><span class="cat-pill ${catClass}">${esc(m.category)}</span></td><td><span class="type-pill">${m.type}</span></td><td class="metric-val" title="Kopyalamak için tıklayın">${esc(String(m.value))}</td>`;
+                    frag.appendChild(tr);
                 }
             } else {
                 const raw = d.raw_metrics_array;
@@ -655,44 +708,142 @@
                     const v = raw[i];
                     const t = v === null ? 'null' : Array.isArray(v) ? 'array' : typeof v;
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `<td class="idx">${i}</td><td>-</td><td>-</td><td><span class="type-pill">${t}</span></td><td style="word-break:break-all">${esc(JSON.stringify(v))}</td>`;
-                    tbody.appendChild(tr);
+                    tr.dataset.category = '';
+                    tr.dataset.empty = v === null || v === undefined ? '1' : '0';
+                    tr.dataset.index = String(i);
+                    tr.innerHTML = `<td class="idx">#${i}</td><td>-</td><td>-</td><td><span class="type-pill">${t}</span></td><td class="metric-val">${esc(JSON.stringify(v))}</td>`;
+                    frag.appendChild(tr);
                 }
             }
-            document.getElementById('tbl-count').textContent = `${fmt.length || d.raw_metrics_array.length} metrik`;
+            tbody.replaceChildren(frag);
+            applyTableFilters();
 
-            // Fonts
+            // Fonts / Probe times
             const fb = document.getElementById('font-body');
-            fb.innerHTML = '';
+            const fontFrag = document.createDocumentFragment();
             const fontStart = 683, fontEnd = Math.min(764, (fmt.length || d.raw_metrics_array.length) - 1);
             for (let i = fontStart; i <= fontEnd; i++) {
                 const tr = document.createElement('tr');
                 if (fmt.length > i) {
-                    const installed = fmt[i].value && !fmt[i].value.includes('Değil');
-                    tr.innerHTML = `<td class="idx">${i - fontStart}</td><td><span class="badge ${installed ? 'ok' : ''}" style="font-size:0.75rem">${esc(fmt[i].value)}</span></td>`;
+                    const val = fmt[i].value;
+                    const label = fmt[i].label;
+                    const isTime = label && (label.includes('Sure') || label.includes('Süre'));
+                    let badgeClass = '';
+                    if (isTime) {
+                        badgeClass = 'warn';
+                    } else if (val && !val.includes('Degil') && !val.includes('Değil') && val !== 'bos' && val !== 'boş' && val !== '-- (olculmedi)' && val !== '-- (ölçülmedi)') {
+                        badgeClass = 'ok';
+                    }
+                    tr.innerHTML = `<td class="idx">${i}</td><td class="metric-label" style="max-width:280px">${esc(label)}</td><td><span class="badge ${badgeClass}" style="font-size:0.75rem">${esc(val)}</span></td>`;
                 } else {
-                    tr.innerHTML = `<td class="idx">${i}</td><td>${esc(String(d.raw_metrics_array[i]))}</td>`;
+                    tr.innerHTML = `<td class="idx">${i}</td><td>-</td><td>${esc(String(d.raw_metrics_array[i]))}</td>`;
                 }
-                fb.appendChild(tr);
+                fontFrag.appendChild(tr);
             }
+            fb.replaceChildren(fontFrag);
 
             // JSON
             document.getElementById('json-out').textContent = JSON.stringify(d, null, 2);
         }
 
-        // --- Search ---
-        document.getElementById('tbl-search').addEventListener('input', e => {
-            const q = e.target.value.toLowerCase();
-            let n = 0;
-            document.querySelectorAll('#tbl-body tr').forEach(r => {
-                const ok = r.textContent.toLowerCase().includes(q);
-                r.style.display = ok ? '' : 'none';
-                if (ok) n++;
+        // --- Table Filtering ---
+        function applyTableFilters() {
+            const q = document.getElementById('tbl-search').value.trim().toLowerCase();
+            const cat = document.getElementById('cat-filter').value;
+            const hideEmpty = document.getElementById('hide-empty').checked;
+            let visible = 0;
+            const total = decoded ? (decoded.formatted_metrics || decoded.raw_metrics_array).length : 0;
+
+            document.querySelectorAll('#tbl-body tr').forEach(tr => {
+                if (hideEmpty && tr.dataset.empty === '1') { tr.style.display = 'none'; return; }
+                if (cat && tr.dataset.category !== cat) { tr.style.display = 'none'; return; }
+                if (q) {
+                    const matchIdx = q.startsWith('#') ? tr.dataset.index === q.substring(1) : tr.textContent.toLowerCase().includes(q);
+                    if (!matchIdx) { tr.style.display = 'none'; return; }
+                }
+                tr.style.display = '';
+                visible++;
             });
-            document.getElementById('tbl-count').textContent = `${n} metrik`;
+            document.getElementById('tbl-count').textContent = `${visible} / ${total} metrik`;
+        }
+
+        document.getElementById('tbl-search').addEventListener('input', applyTableFilters);
+        document.getElementById('cat-filter').addEventListener('change', applyTableFilters);
+        document.getElementById('hide-empty').addEventListener('change', applyTableFilters);
+
+        // --- Cell click to copy ---
+        document.getElementById('tbl-body').addEventListener('click', e => {
+            const cell = e.target.closest('.metric-val');
+            if (!cell) return;
+            navigator.clipboard.writeText(cell.textContent).catch(() => {});
+            const orig = cell.style.color;
+            cell.style.color = 'var(--emerald)';
+            setTimeout(() => { cell.style.color = orig; }, 600);
         });
 
-        // --- Copy & Download ---
+        // --- Keyboard shortcuts ---
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                document.getElementById('btn-decode').click();
+            } else if (e.key === '/' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+                e.preventDefault();
+                document.getElementById('tbl-search').focus();
+            }
+        });
+
+        // --- CSV Export ---
+        document.getElementById('btn-export-csv').addEventListener('click', () => {
+            if (!decoded) return;
+            let csv;
+            if (typeof exportMetricsToCSV === 'function') {
+                csv = exportMetricsToCSV(decoded);
+            } else {
+                const escCSV = v => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s; };
+                const headers = "Index,Etiket,Kategori,Tip,Deger,Ham";
+                const rows = (decoded.formatted_metrics || []).map(m =>
+                    [m.index, escCSV(m.label), escCSV(m.category), escCSV(m.type), escCSV(m.value), escCSV(typeof m.raw === 'object' ? JSON.stringify(m.raw) : m.raw)].join(',')
+                );
+                csv = "﻿" + headers + "\r\n" + rows.join("\r\n");
+            }
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `castle_metrics_${decoded.timestamp.raw_timestamp_ms}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        // --- Markdown Export ---
+        document.getElementById('btn-export-md').addEventListener('click', () => {
+            if (!decoded) return;
+            let md;
+            if (typeof exportMetricsToMarkdown === 'function') {
+                md = exportMetricsToMarkdown(decoded);
+            } else {
+                const s = decoded.metrics_summary;
+                md = `# Castle Token Analiz Raporu\n\n`;
+                md += `- **Protokol:** \`${decoded.token_version}\`\n`;
+                md += `- **Zaman (UTC):** \`${decoded.timestamp.iso_utc}\`\n`;
+                md += `- **IP:** \`${s.client_ip}\`\n`;
+                md += `- **OS / Tarayıcı:** \`${s.client_os}\` / \`${s.browser_build}\`\n`;
+                md += `- **Cihaz GUID:** \`${s.device_id_fingerprint}\`\n`;
+                md += `- **Durum:** **${decoded.security_verdict_tr}**\n\n`;
+                md += `| # | Etiket | Kategori | Tip | Değer |\n|---:|---|---|---|---|\n`;
+                for (const m of (decoded.formatted_metrics || [])) {
+                    if (m.raw !== null && m.raw !== 165 && m.raw !== 161 && m.raw !== 173) {
+                        const sv = String(m.value).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+                        md += `| ${m.index} | ${m.label} | ${m.category} | \`${m.type}\` | \`${sv}\` |\n`;
+                    }
+                }
+            }
+            navigator.clipboard.writeText(md).then(() => {
+                const b = document.getElementById('btn-export-md');
+                b.textContent = 'Kopyalandı!';
+                setTimeout(() => b.textContent = 'MD Kopyala', 1500);
+            }).catch(() => {});
+        });
+
+        // --- Copy & Download JSON ---
         document.getElementById('btn-copy').addEventListener('click', () => {
             if (!decoded) return;
             navigator.clipboard.writeText(JSON.stringify(decoded, null, 2));
