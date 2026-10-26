@@ -762,7 +762,9 @@ function decodeCastleToken(tokenStr) {
     const metrics = _deserialize(decompressed);
 
     // V2: once lr() decode, sonra cleanStr (siralama duzeltmesi)
-    const cleaned = metrics.map(val => {
+    // 683-764 arasi kd() kodlu prob sureleri — lr decode ATLANMALI
+    const cleaned = metrics.map((val, idx) => {
+        if (isV2 && idx >= PROBE_TIME_START && idx <= PROBE_TIME_END) return val;
         const decoded = isV2 ? _lrDecodeValue(val) : val;
         return _cleanStr(decoded);
     });
