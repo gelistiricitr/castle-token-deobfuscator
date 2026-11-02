@@ -82,16 +82,26 @@ def _recover_v2(raw: bytes) -> str:
             chars.append(chr(val))
     return "".join(chars)
 
+def _recover_v3(raw: bytes) -> str:
+    """Gn() inverse (V3 WcmFKZlD): ROR4 -> XOR(0x72DC) -> ADD(0xB1E6)"""
+    chars = []
+    for i in range(0, len(raw), 2):
+        if i + 1 < len(raw):
+            val = (raw[i] << 8) | raw[i + 1]
+            val = ((val >> 4) | (val << 12)) & 0xFFFF
+            val = (val ^ 0x72DC) & 0xFFFF
+            val = (val + 0xB1E6) & 0xFFFF
+            chars.append(chr(val))
+    return "".join(chars)
+
 def recover_timestamp_key(key_b64: str) -> str:
     padded = key_b64 + "=" * (-len(key_b64) % 4)
     raw = base64.b64decode(padded)
-    v1 = _recover_v1(raw)
-    if v1.isdigit() and len(v1) == 13:
-        return v1
-    v2 = _recover_v2(raw)
-    if v2.isdigit() and len(v2) == 13:
-        return v2
-    return v1
+    for fn in (_recover_v3, _recover_v2, _recover_v1):
+        res = fn(raw)
+        if res.isdigit() and len(res) == 13:
+            return res
+    return _recover_v1(raw)
 
 # ---------------------------------------------------------------------------
 # 2. SAF PYTHON AKIŞ ŞİFRESİ ÇÖZÜCÜ (PURE STREAM CIPHER DECRYPTOR)
@@ -164,6 +174,34 @@ def decrypt_castle_stream_v2(ciphertext: bytes, key_str: str) -> bytes:
             state = (state ^ (state >> 17)) & 0xFFFFFFFF
             state = (state ^ ((state << 5) & 0xFFFFFFFF)) & 0xFFFFFFFF
             state = (state + 0x93CF09BD) & 0xFFFFFFFF
+
+        out[i] = ciphertext[i] ^ ((state >> ((i & 3) * 8)) & 0xFF)
+
+    return bytes(out)
+
+def decrypt_castle_stream_v3(ciphertext: bytes, key_str: str) -> bytes:
+    """
+    V3 Castle akis sifresi (WcmFKZlD): FNV-1a (offset 0x4A391620) + Xorshift32.
+    castle.umd-CGiQ_kr0.js tersine muhendisligi ile elde edilmistir.
+    """
+    h = 0x4A391620
+    FNV_PRIME = 0x01000193
+    for ch in key_str:
+        h = ((h ^ ord(ch)) * FNV_PRIME) & 0xFFFFFFFF
+    if h == 0:
+        h = 0x9E3779B9
+
+    state = (h ^ 0x6F0FB60C) & 0xFFFFFFFF
+    out = bytearray(len(ciphertext))
+
+    for i in range(len(ciphertext)):
+        if (i & 3) == 0:
+            state = (state + i + 0x09007E08) & 0xFFFFFFFF
+            state = (state + 0x6F0FB60C) & 0xFFFFFFFF
+            state = (state ^ ((state << 13) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            state = (state ^ (state >> 17)) & 0xFFFFFFFF
+            state = (state ^ ((state << 5) & 0xFFFFFFFF)) & 0xFFFFFFFF
+            state = (state + 0x391BF9C5) & 0xFFFFFFFF
 
         out[i] = ciphertext[i] ^ ((state >> ((i & 3) * 8)) & 0xFF)
 
@@ -285,14 +323,13 @@ def clean_string_value(s: Any) -> Any:
     if not s:
         return s
 
-    # İşletim sistemi dizesi: '\x03\x07\x03\x00Windowsx86' -> 'Windows x86'
-    if 'Windows' in s or 'Mac' in s or 'Linux' in s or 'Android' in s or 'iOS' in s:
+    # İşletim sistemi dizesi: '\x03\x07\x03\x00Windowsx86' -> 'Windows (x86_64)'
+    if 'Windowsx86' in s:
+        return 'Windows (x86_64)'
+    if any(ord(ch) < 32 for ch in s) and ('Windows' in s or 'Mac' in s or 'Linux' in s or 'Android' in s or 'iOS' in s):
         m = re.search(r'(Windows|Macintosh|Linux|Android|iOS)[a-zA-Z0-9_\-\s]*', s)
         if m:
-            os_name = m.group(0)
-            if 'Windowsx86' in os_name:
-                return 'Windows (x86_64)'
-            return os_name
+            return m.group(0)
 
     # Donanım parmak izi / GUID:
     if '][' in s or 'iv1ty' in s or 'w3c' in s:
@@ -548,10 +585,145 @@ METRIC_INFO_V2 = {
     674: ("final_val_2", "Son Deger 2", "event"),
     677: ("final_timing_2", "Son Zamanlama 2", "event"),
     679: ("short_hash_2", "Kisa Hash 2", "fingerprint"),
+    # 683..767: Zamanlama Problari (kd Float32 ms)
+    747: ("probe_time_sync_total", "Senkron Problar Toplam Suresi (ms)", "event"),
+    748: ("probe_time_total_token", "Toplam Token Uretim Suresi (ms)", "event"),
+    749: ("probe_time_async_all", "18 Asenkron Prob Toplam Suresi (ms)", "event"),
+    750: ("probe_time_async_0", "Asenkron Prob 0: Ilk baslatma (ms)", "event"),
+    751: ("probe_time_async_1", "Asenkron Prob 1: UA HighEntropyValues (ms)", "event"),
+    752: ("probe_time_async_2", "Asenkron Prob 2: MediaCapabilities (ms)", "event"),
+    753: ("probe_time_async_3", "Asenkron Prob 3: Permissions API (ms)", "event"),
+    754: ("probe_time_async_4", "Asenkron Prob 4: Medya Codec/DRM (ms)", "event"),
+    755: ("probe_time_async_5", "Asenkron Prob 5: AudioContext Parmak Izi (ms)", "event"),
+    756: ("probe_time_async_6", "Asenkron Prob 6: Worker Debugger Tespiti (ms)", "event"),
+    757: ("probe_time_async_7", "Asenkron Prob 7: WebRTC SDP Analizi (ms)", "event"),
+    758: ("probe_time_async_8", "Asenkron Prob 8: WebRTC ICE/IP Sizintisi (ms)", "event"),
+    759: ("probe_time_async_9", "Asenkron Prob 9: Storage Estimate Kota (ms)", "event"),
+    760: ("probe_time_async_10", "Asenkron Prob 10: WebGL/GPU Render (ms)", "event"),
+    761: ("probe_time_async_11", "Asenkron Prob 11: MediaDevices Cihazlar (ms)", "event"),
+    762: ("probe_time_async_12", "Asenkron Prob 12: Battery API Durumu (ms)", "event"),
+    763: ("probe_time_async_13", "Asenkron Prob 13: SpeechSynthesis Sesler (ms)", "event"),
+    764: ("probe_time_async_14", "Asenkron Prob 14: ServiceWorker Kayit (ms)", "event"),
+    765: ("probe_time_async_15", "Asenkron Prob 15: WebGPU Adaptor (ms)", "event"),
+    766: ("probe_time_async_16", "Asenkron Prob 16: Canvas/Font Async (ms)", "event"),
+    767: ("probe_time_async_17", "Asenkron Prob 17: rAF Zamanlayici (ms)", "event"),
 }
 
+# V3 (WcmFKZlD / castle.umd-CGiQ_kr0.js) Metrik Haritasi (772 metrik, 0..771)
+METRIC_INFO_V3: Dict[int, Tuple[str, str, str]] = {
+    0: ("fp_hex_4", "Parmak Izi Hex 4", "fingerprint"),
+    10: ("canvas_fp", "Canvas Parmak Izi Hash", "fingerprint"),
+    21: ("architecture", "Islemci Mimarisi (x86/arm)", "system"),
+    29: ("browser_ver_detail", "Tarayici Surumu (Detay)", "browser"),
+    43: ("webdriver_flag", "WebDriver / Otomasyon Bayragi", "probe"),
+    53: ("os_arch", "IS + Mimari Birlesik", "system"),
+    57: ("engine_version", "Motor Surumu (Chromium/OS)", "system"),
+    60: ("tz_offset_raw", "Saat Dilimi Ofseti (dk)", "system"),
+    64: ("locale", "Yerel Ayar (Locale)", "system"),
+    68: ("automation_flag_1", "Otomasyon Kontrol Bayragi 1", "probe"),
+    77: ("error_probe_type", "Hata Probu: RangeError", "probe"),
+    78: ("shader_hash_str", "WebGL Shader Hash + Tip", "fingerprint"),
+    84: ("session_id", "Oturum Kimligi (Session ID)", "session"),
+    87: ("os_name", "Isletim Sistemi Adi", "system"),
+    89: ("timezone", "Saat Dilimi (IANA)", "system"),
+    92: ("automation_flag_2", "Otomasyon Kontrol Bayragi 2", "probe"),
+    96: ("user_agent", "User-Agent", "browser"),
+    98: ("error_probe_inv", "Hata Probu: Illegal Invocation", "probe"),
+    100: ("feature_flags_bin", "Ozellik Bayrak Dizisi (Binary)", "probe"),
+    108: ("engine_ver_dup", "Motor Surumu (Kopya)", "browser"),
+    121: ("display_type", "Goruntu Tipi (screen)", "screen"),
+    122: ("accept_langs", "Kabul Edilen Diller", "browser"),
+    125: ("platform", "Platform (navigator.platform)", "system"),
+    135: ("language", "Birincil Dil Kodu", "system"),
+    157: ("origin_url", "Kaynak URL (location.origin)", "network"),
+    160: ("device_uuid", "Cihaz UUID", "session"),
+    168: ("css_selector_fp", "CSS Selector Destegi", "probe"),
+    169: ("castle_pubkey", "Castle Ortam / Public Key", "token"),
+    174: ("secondary_ts", "Ikincil Zaman Damgasi (Sayfa Yukleme)", "session"),
+    176: ("automation_flag_3", "Otomasyon Kontrol Bayragi 3", "probe"),
+    179: ("audio_fp", "AudioContext Parmak Izi Hash", "fingerprint"),
+    183: ("date_probe", "Tarih Format Probu (Intl)", "system"),
+    209: ("local_ip_fallback", "Yerel IP Fallback", "network"),
+    212: ("client_ip", "Istemci IP Adresi (WebRTC)", "network"),
+    218: ("chrome_runtime_flag", "Chrome Runtime Spoof Bayragi", "probe"),
+    228: ("automation_flag_4", "Otomasyon Kontrol Bayragi 4", "probe"),
+    232: ("session_id_dup", "Oturum Kimligi (Kopya)", "session"),
+    237: ("gpu_renderer", "GPU Renderer (WebGL)", "browser"),
+    244: ("automation_flag_5", "Otomasyon Kontrol Bayragi 5", "probe"),
+    265: ("webgl_fp", "WebGL Render Parmak Izi Hash", "fingerprint"),
+    296: ("gpu_renderer_dup", "GPU Renderer (Kopya)", "browser"),
+    306: ("shader_source", "WebGL Shader Kaynak Kodu", "probe"),
+    311: ("gpu_arch", "GPU Mimarisi (WebGPU)", "browser"),
+    355: ("headless_flag", "Headless Tarayici Bayragi", "probe"),
+    373: ("zero_flags", "Sifir Bayrak Dizisi", "probe"),
+    375: ("window_prop_check", "Window Ozellik Dogrulamasi", "probe"),
+    398: ("browser_vendor", "Tarayici Ureticisi (navigator.vendor)", "browser"),
+    402: ("arch_bits", "Islemci Bit Genisligi (64/32)", "system"),
+    412: ("page_title", "Sayfa Basligi (document.title)", "network"),
+    414: ("screen_orient", "Ekran Yonu (Orientation)", "screen"),
+    416: ("automation_flag_6", "Otomasyon Kontrol Bayragi 6", "probe"),
+    431: ("error_probe_prop", "Hata Probu: Property Access", "probe"),
+    433: ("webrtc_proto", "WebRTC Aktarim Protokolu", "probe"),
+    445: ("cdp_code", "CDP / DevTools Tespit Kodu ('N'=Temiz)", "probe"),
+    477: ("chrome_obj_present", "window.chrome Nesnesi Mevcut", "browser"),
+    492: ("render_engine", "Render Motoru", "browser"),
+    504: ("build_id", "Tarayici Build ID (productSub)", "browser"),
+    506: ("selenium_cdc_flag", "Selenium / ChromeDriver ($cdc_) Bayragi", "probe"),
+    510: ("perf_memory_present", "Performance Memory Mevcut", "browser"),
+    512: ("visibility", "Sayfa Gorunurlugu (visibilityState)", "session"),
+    517: ("chrome_csi_present", "Chrome CSI/LoadTimes Dogrulamasi", "browser"),
+    522: ("ua_dup", "User-Agent (Kopya)", "browser"),
+    523: ("ua_brands", "UA Marka Bilgisi (Tam JSON)", "browser"),
+    527: ("automation_flag_7", "Otomasyon Kontrol Bayragi 7", "probe"),
+    533: ("protocol", "Protokol (location.protocol)", "network"),
+    535: ("automation_flag_8", "Otomasyon Kontrol Bayragi 8", "probe"),
+    538: ("nav_type", "Navigasyon Tipi", "session"),
+    555: ("last_event", "Son Kullanici Etkilesim Olayi", "event"),
+    558: ("proto_probe", "Prototip Dongu Probu (__proto__)", "probe"),
+    573: ("gpu_vendor", "GPU Ureticisi", "browser"),
+    592: ("browser_name", "Tarayici Adi", "browser"),
+    597: ("stack_probe", "Yigin Derinlik Probu (Call Stack)", "probe"),
+    598: ("site_domain", "Site Alan Adi (location.hostname)", "network"),
+    632: ("ua_brands_short", "UA Marka (Kisa JSON)", "browser"),
+    636: ("url_path", "URL Yolu (location.pathname)", "network"),
+    650: ("fp_hex_2", "Parmak Izi Hex 2", "fingerprint"),
+    655: ("feature_support_flag", "Tarayici Ozellik Destegi Bayragi", "browser"),
+    670: ("browser_version", "Tarayici Surumu", "browser"),
+    # 687..771: Zamanlama Problari (Qd Float32 ms)
+    751: ("probe_time_sync_total", "Senkron Problar Toplam Suresi (ms)", "event"),
+    752: ("probe_time_total_token", "Toplam Token Uretim Suresi (ms)", "event"),
+    753: ("probe_time_async_all", "18 Asenkron Prob Toplam Suresi (ms)", "event"),
+    754: ("probe_time_async_0", "Asenkron Prob 0: Ilk baslatma (ms)", "event"),
+    755: ("probe_time_async_1", "Asenkron Prob 1: UA HighEntropyValues (ms)", "event"),
+    756: ("probe_time_async_2", "Asenkron Prob 2: MediaCapabilities (ms)", "event"),
+    757: ("probe_time_async_3", "Asenkron Prob 3: Permissions API (ms)", "event"),
+    758: ("probe_time_async_4", "Asenkron Prob 4: Medya Codec/DRM (ms)", "event"),
+    759: ("probe_time_async_5", "Asenkron Prob 5: AudioContext Parmak Izi (ms)", "event"),
+    760: ("probe_time_async_6", "Asenkron Prob 6: Worker Debugger Tespiti (ms)", "event"),
+    761: ("probe_time_async_7", "Asenkron Prob 7: WebRTC SDP Analizi (ms)", "event"),
+    762: ("probe_time_async_8", "Asenkron Prob 8: WebRTC ICE/IP Sizintisi (ms)", "event"),
+    763: ("probe_time_async_9", "Asenkron Prob 9: Storage Estimate Kota (ms)", "event"),
+    764: ("probe_time_async_10", "Asenkron Prob 10: WebGL/GPU Render (ms)", "event"),
+    765: ("probe_time_async_11", "Asenkron Prob 11: MediaDevices Cihazlar (ms)", "event"),
+    766: ("probe_time_async_12", "Asenkron Prob 12: Battery API Durumu (ms)", "event"),
+    767: ("probe_time_async_13", "Asenkron Prob 13: SpeechSynthesis Sesler (ms)", "event"),
+    768: ("probe_time_async_14", "Asenkron Prob 14: ServiceWorker Kayit (ms)", "event"),
+    769: ("probe_time_async_15", "Asenkron Prob 15: WebGPU Adaptor (ms)", "event"),
+    770: ("probe_time_async_16", "Asenkron Prob 16: Canvas/Font Async (ms)", "event"),
+    771: ("probe_time_async_17", "Asenkron Prob 17: rAF Zamanlayici (ms)", "event"),
+}
+
+def _is_valid_decoded_text(decoded: str) -> bool:
+    if not decoded:
+        return False
+    for ch in decoded:
+        c = ord(ch)
+        if not ((32 <= c <= 126) or c in (9, 10, 13) or (0x00A0 <= c <= 0x024F)):
+            return False
+    return True
+
 def _lr_decode_value(s: Any) -> Any:
-    """lr() kodlu base64 stringini cozumler."""
+    """lr() kodlu base64 stringini cozumler (V2)."""
     if not isinstance(s, str) or len(s) < 4:
         return s
     try:
@@ -569,9 +741,89 @@ def _lr_decode_value(s: Any) -> Any:
         val = ((val >> 1) | (val << 15)) & 0xFFFF
         chars.append(chr(val))
     decoded = ''.join(chars)
-    if decoded and all(32 <= ord(c) <= 126 for c in decoded):
+    if _is_valid_decoded_text(decoded):
         return decoded
     return s
+
+def _v3_decode_value(s: Any) -> Any:
+    """Gn() veya Kn() kodlu base64 stringini cozumler (V3 WcmFKZlD)."""
+    if not isinstance(s, str) or len(s) < 4:
+        return s
+    try:
+        padded = s + '=' * (-len(s) % 4)
+        raw = base64.b64decode(padded)
+    except Exception:
+        return s
+    if len(raw) < 2 or len(raw) % 2 != 0:
+        return s
+
+    # 1. Gn() inverse: ROR4 -> XOR 0x72DC -> ADD 0xB1E6
+    chars_gn = []
+    for i in range(0, len(raw), 2):
+        val = (raw[i] << 8) | raw[i + 1]
+        val = ((val >> 4) | (val << 12)) & 0xFFFF
+        val = (val ^ 0x72DC) & 0xFFFF
+        val = (val + 0xB1E6) & 0xFFFF
+        chars_gn.append(chr(val))
+    dec_gn = ''.join(chars_gn)
+    if _is_valid_decoded_text(dec_gn):
+        return dec_gn
+
+    # 2. Kn() inverse: XOR 0x406F -> SUB 0x3F95
+    chars_kn = []
+    for i in range(0, len(raw), 2):
+        val = (raw[i] << 8) | raw[i + 1]
+        val = ((val ^ 0x406F) - 0x3F95) & 0xFFFF
+        chars_kn.append(chr(val))
+    dec_kn = ''.join(chars_kn)
+    if _is_valid_decoded_text(dec_kn):
+        return dec_kn
+
+    return s
+
+def _kd_decode_float32(s: Any) -> Optional[float]:
+    """V2 kd() 4-bayt sifreli Float32 zamanlama degerini (ms) cozumler."""
+    if not isinstance(s, str) or len(s) < 4:
+        return None
+    try:
+        padded = s + '=' * (-len(s) % 4)
+        raw = base64.b64decode(padded)
+        if len(raw) != 4:
+            return None
+        out = bytearray(4)
+        for i in range(4):
+            b = (raw[i] - 0x99) & 0xFF
+            b = (b ^ 0x8F) & 0xFF
+            b = ((b >> 6) | (b << 2)) & 0xFF
+            out[i] = b
+        val = struct.unpack('>f', bytes(out))[0]
+        if -1e6 < val < 1e9:
+            return round(val, 2)
+    except Exception:
+        pass
+    return None
+
+def _qd_decode_float32(s: Any) -> Optional[float]:
+    """V3 Qd() 4-bayt sifreli Float32 zamanlama degerini (ms) cozumler."""
+    if not isinstance(s, str) or len(s) < 4:
+        return None
+    try:
+        padded = s + '=' * (-len(s) % 4)
+        raw = base64.b64decode(padded)
+        if len(raw) != 4:
+            return None
+        out = bytearray(4)
+        for i in range(4):
+            b = (raw[i] * 15) & 0xFF  # 239 * 15 === 1 (mod 256)
+            b = (b ^ 0x6F) & 0xFF
+            b = ((b >> 5) | (b << 3)) & 0xFF
+            out[i] = b
+        val = struct.unpack('>f', bytes(out))[0]
+        if -1e6 < val < 1e9:
+            return round(val, 2)
+    except Exception:
+        pass
+    return None
 
 def _lr_decode_to_hex(s: Any) -> Optional[str]:
     """lr() decode sonucu ASCII degilse, orijinal base64'u hex olarak dondurur."""
@@ -593,7 +845,7 @@ def _is_bool_true(metrics: list, idx: int) -> bool:
     v = metrics[idx]
     return isinstance(v, bool) and v is True
 
-def _format_value(idx: int, value: Any) -> str:
+def _format_value(idx: int, value: Any, version: int = 2) -> str:
     """Metrik degerini insan-okunabilir formata donusturur."""
     if value is None:
         return "bos"
@@ -610,9 +862,11 @@ def _format_value(idx: int, value: Any) -> str:
             return f"0x{value & 0xFFFFFFFF:08X}"
         return str(value)
     if isinstance(value, float):
+        if (version == 3 and 687 <= idx <= 771) or (version == 2 and 683 <= idx <= 767):
+            return f"{value} ms"
         return str(value)
     if isinstance(value, str):
-        if FONT_PROBE_START <= idx <= FONT_PROBE_END:
+        if version == 2 and FONT_PROBE_START <= idx <= FONT_PROBE_END:
             hex_val = _lr_decode_to_hex(value)
             if hex_val and hex_val in FONT_NOT_INSTALLED_HEX:
                 return "Yuklu Degil"
@@ -631,18 +885,28 @@ def _format_value(idx: int, value: Any) -> str:
         return "[" + ", ".join(items) + "]"
     return str(value)
 
-def _get_metric_info(idx: int, value: Any, is_v2: bool) -> Tuple[str, str, str]:
+def _get_metric_info(idx: int, value: Any, version: Union[int, bool]) -> Tuple[str, str, str]:
     """Metrik icin (etiket, kategori, formatli_deger) dondurur."""
-    formatted = _format_value(idx, value)
+    ver = 2 if version is True else (1 if version is False else int(version))
+    formatted = _format_value(idx, value, ver)
 
-    if is_v2 and idx in METRIC_INFO_V2:
-        _, label, cat = METRIC_INFO_V2[idx]
-        return (label, cat, formatted)
+    if ver == 3:
+        if idx in METRIC_INFO_V3:
+            _, label, cat = METRIC_INFO_V3[idx]
+            return (label, cat, formatted)
+        if 687 <= idx <= 750:
+            return (f"Senkron Prob #{idx - 687} Suresi (ms)", "event", formatted)
 
-    if is_v2 and FONT_PROBE_START <= idx <= FONT_PROBE_END:
-        return (f"Font Testi #{idx - FONT_PROBE_START}", "font", formatted)
+    if ver == 2:
+        if idx in METRIC_INFO_V2:
+            _, label, cat = METRIC_INFO_V2[idx]
+            return (label, cat, formatted)
+        if 683 <= idx <= 746:
+            return (f"Senkron Prob #{idx - 683} Suresi (ms)", "event", formatted)
+        if FONT_PROBE_START <= idx <= FONT_PROBE_END:
+            return (f"Font Testi #{idx - FONT_PROBE_START}", "font", formatted)
 
-    if not is_v2 and idx in METRIC_LABELS:
+    if ver == 1 and idx in METRIC_LABELS:
         _, label = METRIC_LABELS[idx]
         return (label, "system", formatted)
 
@@ -715,50 +979,75 @@ class PureCastleDecoder:
         # 4. Şifreli Gövde (Ciphertext)
         ciphertext = raw_bytes[header_offset + 24:]
 
-        # 5. Versiyon tespiti ve sifre cozme (V1/V2 otomatik algilama)
-        is_v2 = parts[0] != 'uq1seNrd'
-        try:
-            if is_v2:
-                decrypted_bytes = decrypt_castle_stream_v2(ciphertext, timestamp_str)
-            else:
-                decrypted_bytes = decrypt_castle_stream(ciphertext, timestamp_str)
-            decompressed_bytes = zlib.decompress(decrypted_bytes, -15)
-        except zlib.error:
-            if is_v2:
-                decrypted_bytes = decrypt_castle_stream(ciphertext, timestamp_str)
-            else:
-                decrypted_bytes = decrypt_castle_stream_v2(ciphertext, timestamp_str)
-            decompressed_bytes = zlib.decompress(decrypted_bytes, -15)
+        # 5. Versiyon tespiti ve sifre cozme (V3 / V2 / V1 otomatik algilama)
+        prefix = parts[0]
+        if prefix == 'WcmFKZlD':
+            cipher_order = [(3, decrypt_castle_stream_v3), (2, decrypt_castle_stream_v2), (1, decrypt_castle_stream)]
+        elif prefix == 'uq1seNrd':
+            cipher_order = [(1, decrypt_castle_stream), (2, decrypt_castle_stream_v2), (3, decrypt_castle_stream_v3)]
+        else:
+            cipher_order = [(2, decrypt_castle_stream_v2), (3, decrypt_castle_stream_v3), (1, decrypt_castle_stream)]
+
+        version = None
+        decrypted_bytes = b""
+        decompressed_bytes = b""
+        last_err = None
+        for ver_num, decrypt_fn in cipher_order:
+            try:
+                cand_dec = decrypt_fn(ciphertext, timestamp_str)
+                decompressed_bytes = zlib.decompress(cand_dec, -15)
+                decrypted_bytes = cand_dec
+                version = ver_num
+                break
+            except zlib.error as err:
+                last_err = err
+
+        if version is None:
+            raise last_err or ValueError("Castle token akis sifresi cozulemedi (V1/V2/V3 uyumsuz).")
 
         # 7. İkili Telemetri Protokolü Ayrıştırma (Deserialize)
         raw_metrics = deserialize_castle_payload(decompressed_bytes)
 
-        # 8. Temizleme
-        cleaned_metrics = [clean_string_value(v) for v in raw_metrics]
-
-        # 9. V2: lr() kodlu stringleri coz
-        if is_v2:
+        # 8. Versiyona gore string deobfuscation + prob zamanlama (Float32) cozumu + temizleme
+        cleaned_metrics = list(raw_metrics)
+        if version == 3:
             for i in range(len(cleaned_metrics)):
+                if 687 <= i <= 771 and isinstance(cleaned_metrics[i], str):
+                    fval = _qd_decode_float32(cleaned_metrics[i])
+                    if fval is not None:
+                        cleaned_metrics[i] = fval
+                        continue
+                cleaned_metrics[i] = _v3_decode_value(cleaned_metrics[i])
+                cleaned_metrics[i] = clean_string_value(cleaned_metrics[i])
+        elif version == 2:
+            for i in range(len(cleaned_metrics)):
+                if 683 <= i <= 767 and isinstance(cleaned_metrics[i], str):
+                    fval = _kd_decode_float32(cleaned_metrics[i])
+                    if fval is not None:
+                        cleaned_metrics[i] = fval
+                        continue
                 cleaned_metrics[i] = _lr_decode_value(cleaned_metrics[i])
-
-        # 10. Versiyona gore alan cikarimi
-        if is_v2:
-            labels_dict = METRIC_INFO_V2
+                cleaned_metrics[i] = clean_string_value(cleaned_metrics[i])
         else:
-            labels_dict = METRIC_LABELS
+            cleaned_metrics = [clean_string_value(v) for v in cleaned_metrics]
+
+        # 9. Versiyona gore alan cikarimi
         labeled_metrics = {}
         for idx, val in enumerate(cleaned_metrics):
-            if is_v2 and idx in METRIC_INFO_V2:
+            if version == 3 and idx in METRIC_INFO_V3:
+                slug, title, cat = METRIC_INFO_V3[idx]
+                labeled_metrics[slug] = {"index": idx, "title": title, "category": cat, "value": val}
+            elif version == 2 and idx in METRIC_INFO_V2:
                 slug, title, cat = METRIC_INFO_V2[idx]
                 labeled_metrics[slug] = {"index": idx, "title": title, "category": cat, "value": val}
-            elif not is_v2 and idx in METRIC_LABELS:
+            elif version == 1 and idx in METRIC_LABELS:
                 slug, title = METRIC_LABELS[idx]
                 labeled_metrics[slug] = {"index": idx, "title": title, "value": val}
 
         # formatted_metrics: tum metrikler icin etiket/kategori/formatli deger
         formatted_metrics = []
         for i, v in enumerate(cleaned_metrics):
-            label, cat, formatted = _get_metric_info(i, v, is_v2)
+            label, cat, formatted = _get_metric_info(i, v, version)
             formatted_metrics.append({
                 "index": i,
                 "label": label,
@@ -768,7 +1057,50 @@ class PureCastleDecoder:
                 "raw": v,
             })
 
-        if is_v2:
+        if version == 3:
+            client_os = _m(cleaned_metrics, 87, "Bilinmiyor")
+            client_ip = _m(cleaned_metrics, 212, "Bilinmiyor")
+            browser_name = _m(cleaned_metrics, 592, "")
+            browser_ver = _m(cleaned_metrics, 29, _m(cleaned_metrics, 670, "Bilinmiyor"))
+            if browser_name:
+                browser_ver = f"{browser_name} {browser_ver}"
+            device_guid = _m(cleaned_metrics, 160, "Bilinmiyor")
+            user_agent = _m(cleaned_metrics, 96, "Bilinmiyor")
+            gpu_renderer = _m(cleaned_metrics, 237, "Bilinmiyor")
+            timezone = _m(cleaned_metrics, 89, "Bilinmiyor")
+            locale = _m(cleaned_metrics, 64, "Bilinmiyor")
+            platform = _m(cleaned_metrics, 125, "Bilinmiyor")
+            arch = _m(cleaned_metrics, 21, "")
+            page_title = _m(cleaned_metrics, 412, "")
+            origin_url = _m(cleaned_metrics, 157, "")
+            canvas_hash = _m(cleaned_metrics, 10, None)
+            audio_hash = _m(cleaned_metrics, 179, None)
+            webgl_gpu_code = _m(cleaned_metrics, 265, None)
+            session_id = _m(cleaned_metrics, 84, "Bilinmiyor")
+            # V3 Bot & Otomasyon tespiti:
+            # 506: Selenium/ChromeDriver ($cdc_), 43: WebDriver/Otomasyon, 355: Headless,
+            # 218: Chrome Runtime Spoof, 445: CDP ('N' temiz, 'rFzj' CDP aktif)
+            webdriver_active = _is_bool_true(cleaned_metrics, 43) or _is_bool_true(cleaned_metrics, 506)
+            headless_browser = _is_bool_true(cleaned_metrics, 355)
+            cdp_val = _m(cleaned_metrics, 445, "N")
+            cdp_active = (isinstance(cdp_val, str) and cdp_val != "N") or _is_bool_true(cleaned_metrics, 445)
+            devtools_open = cdp_active
+            bot_detected = (
+                webdriver_active
+                or headless_browser
+                or _is_bool_true(cleaned_metrics, 68)
+                or _is_bool_true(cleaned_metrics, 92)
+                or _is_bool_true(cleaned_metrics, 176)
+                or _is_bool_true(cleaned_metrics, 218)
+                or _is_bool_true(cleaned_metrics, 228)
+                or _is_bool_true(cleaned_metrics, 244)
+                or _is_bool_true(cleaned_metrics, 416)
+                or _is_bool_true(cleaned_metrics, 527)
+                or _is_bool_true(cleaned_metrics, 535)
+            )
+            screen_res = f"{platform} {arch}".strip()
+            font_signatures = cleaned_metrics[687:751] if len(cleaned_metrics) >= 751 else []
+        elif version == 2:
             client_os = _m(cleaned_metrics, 8, "Bilinmiyor")
             client_ip = _m(cleaned_metrics, 473, "Bilinmiyor")
             browser_name = _m(cleaned_metrics, 101, "")
@@ -786,6 +1118,7 @@ class PureCastleDecoder:
             origin_url = _m(cleaned_metrics, 260, "")
             canvas_hash = _m(cleaned_metrics, 135, None)
             audio_hash = _m(cleaned_metrics, 143, None)
+            webgl_gpu_code = _m(cleaned_metrics, 11, None)
             session_id = _m(cleaned_metrics, 622, "Bilinmiyor")
             # Bot tespiti: V2'de sadece gercek boolean degerler gecerli
             bot_detected = _is_bool_true(cleaned_metrics, 44)
@@ -794,6 +1127,7 @@ class PureCastleDecoder:
             devtools_open = _is_bool_true(cleaned_metrics, 151)
             cdp_active = _is_bool_true(cleaned_metrics, 383)
             screen_res = f"{platform} {arch}".strip()
+            font_signatures = cleaned_metrics[668:] if len(cleaned_metrics) > 668 else []
         else:
             client_os = _m(cleaned_metrics, 59, "Windows")
             client_ip = _m(cleaned_metrics, 406, "Bilinmiyor")
@@ -807,6 +1141,7 @@ class PureCastleDecoder:
             origin_url = ""
             canvas_hash = _m(cleaned_metrics, 6, None)
             audio_hash = _m(cleaned_metrics, 8, None)
+            webgl_gpu_code = _m(cleaned_metrics, 11, None)
             session_id = "Bilinmiyor"
             bot_detected = _is_bool_true(cleaned_metrics, 44)
             webdriver_active = _is_bool_true(cleaned_metrics, 22)
@@ -816,12 +1151,11 @@ class PureCastleDecoder:
             w = _m(cleaned_metrics, 1, 0)
             h = _m(cleaned_metrics, 2, 0)
             screen_res = f"{w}x{h}" if isinstance(w, int) and isinstance(h, int) else "Bilinmiyor"
+            font_signatures = cleaned_metrics[668:] if len(cleaned_metrics) > 668 else []
 
         is_bot = bot_detected or webdriver_active or cdp_active
         security_verdict = "FLAGGED_AS_BOT" if is_bot else "VERIFIED_GENUINE_HUMAN"
         security_text = "SUPHELI / BOT (Tespit Edildi)" if is_bot else "GUVENLI / GERCEK KULLANICI (Temiz)"
-
-        font_signatures = cleaned_metrics[668:] if len(cleaned_metrics) > 668 else []
 
         summary = {
             "token_status": "SUCCESSFULLY_DECRYPTED",
@@ -857,7 +1191,7 @@ class PureCastleDecoder:
             "graphics_and_fingerprints": {
                 "canvas_hash": canvas_hash,
                 "audio_hash": audio_hash,
-                "webgl_gpu_code": _m(cleaned_metrics, 11, None),
+                "webgl_gpu_code": webgl_gpu_code,
                 "total_font_probes": len(font_signatures),
                 "unique_fonts_detected": len(set(str(x) for x in font_signatures))
             },

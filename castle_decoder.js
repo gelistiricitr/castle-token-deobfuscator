@@ -793,7 +793,117 @@ const METRIC_INFO_V2 = {
 };
 
 const PROBE_TIME_START = 683;
-const PROBE_TIME_END = 764;
+const PROBE_TIME_END = 767;
+const PROBE_TIME_START_V3 = 687;
+const PROBE_TIME_END_V3 = 771;
+
+const METRIC_INFO_V3 = {
+    0: ["fp_hex_4", "Parmak Izi Hex 4", "fingerprint"],
+    10: ["canvas_fp", "Canvas Parmak Izi Hash", "fingerprint"],
+    21: ["architecture", "Islemci Mimarisi (x86/arm)", "system"],
+    29: ["browser_ver_detail", "Tarayici Surumu (Detay)", "browser"],
+    43: ["webdriver_flag", "WebDriver / Otomasyon Bayragi", "probe"],
+    53: ["os_arch", "IS + Mimari Birlesik", "system"],
+    57: ["engine_version", "Motor Surumu (Chromium/OS)", "system"],
+    60: ["tz_offset_raw", "Saat Dilimi Ofseti (dk)", "system"],
+    64: ["locale", "Yerel Ayar (Locale)", "system"],
+    68: ["automation_flag_1", "Otomasyon Kontrol Bayragi 1", "probe"],
+    77: ["error_probe_type", "Hata Probu: RangeError", "probe"],
+    78: ["shader_hash_str", "WebGL Shader Hash + Tip", "fingerprint"],
+    84: ["session_id", "Oturum Kimligi (Session ID)", "session"],
+    87: ["os_name", "Isletim Sistemi Adi", "system"],
+    89: ["timezone", "Saat Dilimi (IANA)", "system"],
+    92: ["automation_flag_2", "Otomasyon Kontrol Bayragi 2", "probe"],
+    96: ["user_agent", "User-Agent", "browser"],
+    98: ["error_probe_inv", "Hata Probu: Illegal Invocation", "probe"],
+    100: ["feature_flags_bin", "Ozellik Bayrak Dizisi (Binary)", "probe"],
+    108: ["engine_ver_dup", "Motor Surumu (Kopya)", "browser"],
+    121: ["display_type", "Goruntu Tipi (screen)", "screen"],
+    122: ["accept_langs", "Kabul Edilen Diller", "browser"],
+    125: ["platform", "Platform (navigator.platform)", "system"],
+    135: ["language", "Birincil Dil Kodu", "system"],
+    157: ["origin_url", "Kaynak URL (location.origin)", "network"],
+    160: ["device_uuid", "Cihaz UUID", "session"],
+    168: ["css_selector_fp", "CSS Selector Destegi", "probe"],
+    169: ["castle_pubkey", "Castle Ortam / Public Key", "token"],
+    174: ["secondary_ts", "Ikincil Zaman Damgasi (Sayfa Yukleme)", "session"],
+    176: ["automation_flag_3", "Otomasyon Kontrol Bayragi 3", "probe"],
+    179: ["audio_fp", "AudioContext Parmak Izi Hash", "fingerprint"],
+    183: ["date_probe", "Tarih Format Probu (Intl)", "system"],
+    209: ["local_ip_fallback", "Yerel IP Fallback", "network"],
+    212: ["client_ip", "Istemci IP Adresi (WebRTC)", "network"],
+    218: ["chrome_runtime_flag", "Chrome Runtime Spoof Bayragi", "probe"],
+    228: ["automation_flag_4", "Otomasyon Kontrol Bayragi 4", "probe"],
+    232: ["session_id_dup", "Oturum Kimligi (Kopya)", "session"],
+    237: ["gpu_renderer", "GPU Renderer (WebGL)", "browser"],
+    244: ["automation_flag_5", "Otomasyon Kontrol Bayragi 5", "probe"],
+    265: ["webgl_fp", "WebGL Render Parmak Izi Hash", "fingerprint"],
+    296: ["gpu_renderer_dup", "GPU Renderer (Kopya)", "browser"],
+    306: ["shader_source", "WebGL Shader Kaynak Kodu", "probe"],
+    311: ["gpu_arch", "GPU Mimarisi (WebGPU)", "browser"],
+    355: ["headless_flag", "Headless Tarayici Bayragi", "probe"],
+    373: ["zero_flags", "Sifir Bayrak Dizisi", "probe"],
+    375: ["window_prop_check", "Window Ozellik Dogrulamasi", "probe"],
+    398: ["browser_vendor", "Tarayici Ureticisi (navigator.vendor)", "browser"],
+    402: ["arch_bits", "Islemci Bit Genisligi (64/32)", "system"],
+    412: ["page_title", "Sayfa Basligi (document.title)", "network"],
+    414: ["screen_orient", "Ekran Yonu (Orientation)", "screen"],
+    416: ["automation_flag_6", "Otomasyon Kontrol Bayragi 6", "probe"],
+    431: ["error_probe_prop", "Hata Probu: Property Access", "probe"],
+    433: ["webrtc_proto", "WebRTC Aktarim Protokolu", "probe"],
+    445: ["cdp_code", "CDP / DevTools Tespit Kodu ('N'=Temiz)", "probe"],
+    477: ["chrome_obj_present", "window.chrome Nesnesi Mevcut", "browser"],
+    492: ["render_engine", "Render Motoru", "browser"],
+    504: ["build_id", "Tarayici Build ID (productSub)", "browser"],
+    506: ["selenium_cdc_flag", "Selenium / ChromeDriver ($cdc_) Bayragi", "probe"],
+    510: ["perf_memory_present", "Performance Memory Mevcut", "browser"],
+    512: ["visibility", "Sayfa Gorunurlugu (visibilityState)", "session"],
+    517: ["chrome_csi_present", "Chrome CSI/LoadTimes Dogrulamasi", "browser"],
+    522: ["ua_dup", "User-Agent (Kopya)", "browser"],
+    523: ["ua_brands", "UA Marka Bilgisi (Tam JSON)", "browser"],
+    527: ["automation_flag_7", "Otomasyon Kontrol Bayragi 7", "probe"],
+    533: ["protocol", "Protokol (location.protocol)", "network"],
+    535: ["automation_flag_8", "Otomasyon Kontrol Bayragi 8", "probe"],
+    538: ["nav_type", "Navigasyon Tipi", "session"],
+    555: ["last_event", "Son Kullanici Etkilesim Olayi", "event"],
+    558: ["proto_probe", "Prototip Dongu Probu (__proto__)", "probe"],
+    573: ["gpu_vendor", "GPU Ureticisi", "browser"],
+    592: ["browser_name", "Tarayici Adi", "browser"],
+    597: ["stack_probe", "Yigin Derinlik Probu (Call Stack)", "probe"],
+    598: ["site_domain", "Site Alan Adi (location.hostname)", "network"],
+    632: ["ua_brands_short", "UA Marka (Kisa JSON)", "browser"],
+    636: ["url_path", "URL Yolu (location.pathname)", "network"],
+    650: ["fp_hex_2", "Parmak Izi Hex 2", "fingerprint"],
+    655: ["feature_support_flag", "Tarayici Ozellik Destegi Bayragi", "browser"],
+    670: ["browser_version", "Tarayici Surumu", "browser"],
+    751: ["probe_time_sync_total", "Senkron Problar Toplam Suresi (ms)", "timing"],
+    752: ["probe_time_total_token", "Toplam Token Uretim Suresi (ms)", "timing"],
+    753: ["probe_time_async_all", "18 Asenkron Prob Toplam Suresi (ms)", "timing"],
+    754: ["probe_time_async_0", "Asenkron Prob 0: Ilk baslatma (ms)", "timing"],
+    755: ["probe_time_async_1", "Asenkron Prob 1: UA HighEntropyValues (ms)", "timing"],
+    756: ["probe_time_async_2", "Asenkron Prob 2: MediaCapabilities (ms)", "timing"],
+    757: ["probe_time_async_3", "Asenkron Prob 3: Permissions API (ms)", "timing"],
+    758: ["probe_time_async_4", "Asenkron Prob 4: Medya Codec/DRM (ms)", "timing"],
+    759: ["probe_time_async_5", "Asenkron Prob 5: AudioContext Parmak Izi (ms)", "timing"],
+    760: ["probe_time_async_6", "Asenkron Prob 6: Worker Debugger Tespiti (ms)", "timing"],
+    761: ["probe_time_async_7", "Asenkron Prob 7: WebRTC SDP Analizi (ms)", "timing"],
+    762: ["probe_time_async_8", "Asenkron Prob 8: WebRTC ICE/IP Sizintisi (ms)", "timing"],
+    763: ["probe_time_async_9", "Asenkron Prob 9: Storage Estimate Kota (ms)", "timing"],
+    764: ["probe_time_async_10", "Asenkron Prob 10: WebGL/GPU Render (ms)", "timing"],
+    765: ["probe_time_async_11", "Asenkron Prob 11: MediaDevices Cihazlar (ms)", "timing"],
+    766: ["probe_time_async_12", "Asenkron Prob 12: Battery API Durumu (ms)", "timing"],
+    767: ["probe_time_async_13", "Asenkron Prob 13: SpeechSynthesis Sesler (ms)", "timing"],
+    768: ["probe_time_async_14", "Asenkron Prob 14: ServiceWorker Kayit (ms)", "timing"],
+    769: ["probe_time_async_15", "Asenkron Prob 15: WebGPU Adaptor (ms)", "timing"],
+    770: ["probe_time_async_16", "Asenkron Prob 16: Canvas/Font Async (ms)", "timing"],
+    771: ["probe_time_async_17", "Asenkron Prob 17: rAF Zamanlayici (ms)", "timing"],
+};
+// V2 683..746 senkron prob etiketlerini V3 687..750 indekslerine miras al
+for (let i = 683; i <= 746; i++) {
+    if (METRIC_INFO_V2[i] && !METRIC_INFO_V3[i + 4]) {
+        METRIC_INFO_V3[i + 4] = METRIC_INFO_V2[i];
+    }
+}
 
 const CATEGORY_TR = {
     token: "Token/Protokol", system: "Sistem", browser: "Tarayici", screen: "Ekran",
@@ -802,7 +912,7 @@ const CATEGORY_TR = {
     timing: "Sure Olcumu"
 };
 
-// --- kd() Float32 Prob Suresi Cozucu ---
+// --- V2 kd() ve V3 Qd() Float32 Prob Suresi Cozuculer ---
 function _kdDecodeFloat32(b64Str) {
     if (typeof b64Str !== 'string' || b64Str.length < 4) return null;
     try {
@@ -813,20 +923,41 @@ function _kdDecodeFloat32(b64Str) {
         const buf = new ArrayBuffer(4);
         const view = new DataView(buf);
         for (let i = 0; i < 4; i++) {
-            let b = bin.charCodeAt(i) & 0xFF;
-            b ^= 0xDC;
-            b = ((b >>> 5) | (b << 3)) & 0xFF;
-            b ^= 0xF8;
-            b = Math.imul(b, 29) & 0xFF;
+            let b = (bin.charCodeAt(i) - 0x99) & 0xFF;
+            b ^= 0x8F;
+            b = ((b >>> 6) | (b << 2)) & 0xFF;
             view.setUint8(i, b);
         }
-        return Number(view.getFloat32(0, false).toFixed(3));
+        const f = view.getFloat32(0, false);
+        return (Number.isFinite(f) && f > -1e6 && f < 1e9) ? Number(f.toFixed(2)) : null;
     } catch (_) {
         return null;
     }
 }
 
-function _formatValue(idx, val, isV2) {
+function _qdDecodeFloat32(b64Str) {
+    if (typeof b64Str !== 'string' || b64Str.length < 4) return null;
+    try {
+        let padded = b64Str;
+        while (padded.length % 4 !== 0) padded += '=';
+        const bin = atob(padded);
+        if (bin.length !== 4) return null;
+        const buf = new ArrayBuffer(4);
+        const view = new DataView(buf);
+        for (let i = 0; i < 4; i++) {
+            let b = Math.imul(bin.charCodeAt(i) & 0xFF, 15) & 0xFF; // 239 * 15 === 1 (mod 256)
+            b ^= 0x6F;
+            b = ((b >>> 5) | (b << 3)) & 0xFF;
+            view.setUint8(i, b);
+        }
+        const f = view.getFloat32(0, false);
+        return (Number.isFinite(f) && f > -1e6 && f < 1e9) ? Number(f.toFixed(2)) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+function _formatValue(idx, val, version) {
     if (val === null || val === undefined) return "bos";
     if (val === true) return "Evet";
     if (val === false) return "Hayir";
@@ -847,24 +978,48 @@ function _formatValue(idx, val, isV2) {
     return String(val);
 }
 
-function _getMetricInfo(idx, val, isV2) {
-    if (isV2 && METRIC_INFO_V2[idx]) {
+function _getMetricInfo(idx, val, version) {
+    const ver = version === true ? 2 : (version === false ? 1 : version);
+    if (ver === 3) {
+        if (METRIC_INFO_V3[idx]) {
+            const [slug, label, cat] = METRIC_INFO_V3[idx];
+            let displayVal = _formatValue(idx, val, ver);
+            if (cat === 'timing') {
+                if (typeof val === 'number') displayVal = val + " ms";
+                else if (typeof val === 'string') {
+                    const ms = _qdDecodeFloat32(val);
+                    if (ms !== null) displayVal = ms + " ms";
+                }
+            }
+            return { label, category: CATEGORY_TR[cat] || cat, value: displayVal };
+        }
+        if (idx >= PROBE_TIME_START_V3 && idx <= PROBE_TIME_END_V3) {
+            let displayVal = typeof val === 'number' ? (val + " ms") : _formatValue(idx, val, ver);
+            if (typeof val === 'string') {
+                const ms = _qdDecodeFloat32(val);
+                if (ms !== null) displayVal = ms + " ms";
+            }
+            return { label: "Prob Suresi #" + (idx - PROBE_TIME_START_V3) + " (ms)", category: CATEGORY_TR.timing, value: displayVal };
+        }
+    }
+    if (ver === 2 && METRIC_INFO_V2[idx]) {
         const [slug, label, cat] = METRIC_INFO_V2[idx];
-        let displayVal = _formatValue(idx, val, isV2);
-        if (cat === 'timing' && typeof val === 'string') {
-            const ms = _kdDecodeFloat32(val);
-            if (ms !== null) displayVal = ms + " ms";
+        let displayVal = _formatValue(idx, val, ver);
+        if (cat === 'timing') {
+            if (typeof val === 'number') displayVal = val + " ms";
+            else if (typeof val === 'string') {
+                const ms = _kdDecodeFloat32(val);
+                if (ms !== null) displayVal = ms + " ms";
+            }
         }
         return { label, category: CATEGORY_TR[cat] || cat, value: displayVal };
     }
-    if (idx >= PROBE_TIME_START && idx <= PROBE_TIME_END) {
-        let displayVal = "0.0 ms";
+    if (ver === 2 && idx >= PROBE_TIME_START && idx <= PROBE_TIME_END) {
+        let displayVal = typeof val === 'number' ? (val + " ms") : "0.0 ms";
         if (typeof val === 'string' && val.length >= 4) {
             const ms = _kdDecodeFloat32(val);
             if (ms !== null) displayVal = ms + " ms";
             else displayVal = val;
-        } else if (val !== null && val !== undefined) {
-            displayVal = String(val);
         }
         return { label: "Prob Suresi #" + (idx - PROBE_TIME_START) + " (ms)", category: CATEGORY_TR.timing, value: displayVal };
     }
@@ -880,7 +1035,7 @@ function _getMetricInfo(idx, val, isV2) {
     else if (typeof val === 'string') { label = "Metin Degeri"; cat = "browser"; }
     else if (Array.isArray(val)) { label = "Hash Cifti"; cat = "fingerprint"; }
     else { label = "Deger"; cat = "token"; }
-    return { label, category: CATEGORY_TR[cat] || cat, value: _formatValue(idx, val, isV2) };
+    return { label, category: CATEGORY_TR[cat] || cat, value: _formatValue(idx, val, ver) };
 }
 
 // --- Yardimci Fonksiyonlar ---
@@ -927,15 +1082,29 @@ function _recoverTimestampV2(raw) {
     return result;
 }
 
+function _recoverTimestampV3(raw) {
+    let result = '';
+    for (let i = 0; i + 1 < raw.length; i += 2) {
+        let v = (raw[i] << 8) | raw[i + 1];
+        v = ((v >>> 4) | (v << 12)) & 0xFFFF;
+        v = (v ^ 0x72DC) & 0xFFFF;
+        v = (v + 0xB1E6) & 0xFFFF;
+        result += String.fromCharCode(v);
+    }
+    return result;
+}
+
 function _recoverTimestampKey(keyB64) {
     let padded = keyB64;
     while (padded.length % 4 !== 0) padded += '=';
     const raw = _b64ToBytes(padded);
-    const v1 = _recoverTimestampV1(raw);
-    if (/^\d{13}$/.test(v1)) return v1;
+    const v3 = _recoverTimestampV3(raw);
+    if (/^\d{13}$/.test(v3)) return v3;
     const v2 = _recoverTimestampV2(raw);
     if (/^\d{13}$/.test(v2)) return v2;
-    return v1;
+    const v1 = _recoverTimestampV1(raw);
+    if (/^\d{13}$/.test(v1)) return v1;
+    return v3;
 }
 
 // --- 2. Castle Akis Sifresi Cozucu (FNV-1a + Xorshift32) ---
@@ -982,6 +1151,30 @@ function _decryptStreamV2(ciphertext, keyStr) {
             state = (state ^ (state >>> 17)) >>> 0;
             state = (state ^ (state << 5)) >>> 0;
             state = (state + 0x93CF09BD) >>> 0;
+        }
+        out[i] = ciphertext[i] ^ ((state >>> ((i & 3) << 3)) & 0xFF);
+    }
+    return out;
+}
+
+function _decryptStreamV3(ciphertext, keyStr) {
+    let h = 0x4A391620;
+    for (let i = 0; i < keyStr.length; i++) {
+        h = Math.imul(h ^ keyStr.charCodeAt(i), 0x01000193) >>> 0;
+    }
+    if (h === 0) h = 0x9E3779B9;
+
+    let state = (h ^ 0x6F0FB60C) >>> 0;
+    const out = new Uint8Array(ciphertext.length);
+
+    for (let i = 0; i < ciphertext.length; i++) {
+        if ((i & 3) === 0) {
+            state = (state + i + 0x09007E08) >>> 0;
+            state = (state + 0x6F0FB60C) >>> 0;
+            state = (state ^ (state << 13)) >>> 0;
+            state = (state ^ (state >>> 17)) >>> 0;
+            state = (state ^ (state << 5)) >>> 0;
+            state = (state + 0x391BF9C5) >>> 0;
         }
         out[i] = ciphertext[i] ^ ((state >>> ((i & 3) << 3)) & 0xFF);
     }
@@ -1089,9 +1282,10 @@ function _deserialize(data) {
 
 function _cleanStr(s) {
     if (typeof s !== 'string' || !s) return s;
-    if (/Windows|Mac|Linux|Android|iOS/.test(s)) {
+    if (s.includes('Windowsx86')) return 'Windows (x86_64)';
+    if (/[\x00-\x1f]/.test(s) && /Windows|Mac|Linux|Android|iOS/.test(s)) {
         const m = s.match(/(Windows|Macintosh|Linux|Android|iOS)[a-zA-Z0-9_\-\s]*/);
-        if (m) return m[0].includes('Windowsx86') ? 'Windows (x86_64)' : m[0];
+        if (m) return m[0];
     }
     if (s.includes('][') || s.includes('iv1ty') || s.includes('w3c')) {
         const m = s.match(/[a-f0-9]{8,}.*/);
@@ -1106,6 +1300,10 @@ function _cleanStr(s) {
 }
 
 // --- 4b. V2 lr() Decode (Unicode destekli) ---
+
+function _isValidDecodedChar(v) {
+    return (v >= 32 && v <= 126) || v === 9 || v === 10 || v === 13 || (v >= 0x00A0 && v <= 0x024F);
+}
 
 function _lrDecodeValue(s) {
     if (typeof s !== 'string' || s.length < 4 || s.length % 2 !== 0) return s;
@@ -1123,12 +1321,50 @@ function _lrDecodeValue(s) {
         v = ((v >>> 2) | (v << 14)) & 0xFFFF;
         v = (v - 0xC481) & 0xFFFF;
         v = ((v >>> 1) | (v << 15)) & 0xFFFF;
-        if ((v < 32 && v !== 9 && v !== 10 && v !== 13) || (v >= 127 && v < 160) || v > 0xD7FF) {
+        if (!_isValidDecodedChar(v)) {
             return s;
         }
         result += String.fromCharCode(v);
     }
     return result;
+}
+
+function _v3DecodeValue(s) {
+    if (typeof s !== 'string' || s.length < 4 || s.length % 2 !== 0) return s;
+    if (!/^[A-Za-z0-9+/=]+$/.test(s)) return s;
+    let bin;
+    try {
+        let padded = s;
+        while (padded.length % 4 !== 0) padded += '=';
+        bin = atob(padded);
+    } catch (_) { return s; }
+    if (bin.length < 2 || bin.length % 2 !== 0) return s;
+
+    // 1. Gn() inverse: ROR4 -> XOR 0x72DC -> ADD 0xB1E6
+    let resGn = '';
+    let okGn = true;
+    for (let i = 0; i < bin.length; i += 2) {
+        let v = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+        v = ((v >>> 4) | (v << 12)) & 0xFFFF;
+        v = (v ^ 0x72DC) & 0xFFFF;
+        v = (v + 0xB1E6) & 0xFFFF;
+        if (!_isValidDecodedChar(v)) { okGn = false; break; }
+        resGn += String.fromCharCode(v);
+    }
+    if (okGn && resGn.length > 0) return resGn;
+
+    // 2. Kn() inverse: XOR 0x406F -> SUB 0x3F95
+    let resKn = '';
+    let okKn = true;
+    for (let i = 0; i < bin.length; i += 2) {
+        let v = (bin.charCodeAt(i) << 8) | bin.charCodeAt(i + 1);
+        v = ((v ^ 0x406F) - 0x3F95) & 0xFFFF;
+        if (!_isValidDecodedChar(v)) { okKn = false; break; }
+        resKn += String.fromCharCode(v);
+    }
+    if (okKn && resKn.length > 0) return resKn;
+
+    return s;
 }
 
 function _uint32ToIp(val) {
@@ -1193,33 +1429,78 @@ function decodeCastleToken(tokenStr) {
     for (let i = 8; i < 24; i++) checksum += raw[hOff + i].toString(16).padStart(2, '0');
 
     const ciphertext = raw.slice(hOff + 24);
-    const isV2 = parts[0] !== 'uq1seNrd';
-    let decrypted, decompressed;
-    try {
-        decrypted = isV2 ? _decryptStreamV2(ciphertext, tsStr) : _decryptStream(ciphertext, tsStr);
-        decompressed = pako.inflateRaw(decrypted);
-    } catch (_) {
-        decrypted = isV2 ? _decryptStream(ciphertext, tsStr) : _decryptStreamV2(ciphertext, tsStr);
-        decompressed = pako.inflateRaw(decrypted);
+    const prefix = parts[0];
+    let cipherOrder;
+    if (prefix === 'WcmFKZlD') {
+        cipherOrder = [[3, _decryptStreamV3], [2, _decryptStreamV2], [1, _decryptStream]];
+    } else if (prefix === 'uq1seNrd') {
+        cipherOrder = [[1, _decryptStream], [2, _decryptStreamV2], [3, _decryptStreamV3]];
+    } else {
+        cipherOrder = [[2, _decryptStreamV2], [3, _decryptStreamV3], [1, _decryptStream]];
+    }
+
+    let version = null, decrypted = null, decompressed = null, lastErr = null;
+    for (const [verNum, decFn] of cipherOrder) {
+        try {
+            const cand = decFn(ciphertext, tsStr);
+            const inf = pako.inflateRaw(cand);
+            if (inf && inf.length > 0) {
+                decrypted = cand;
+                decompressed = inf;
+                version = verNum;
+                break;
+            }
+        } catch (err) {
+            lastErr = err;
+        }
+    }
+    if (version === null || !decompressed) {
+        throw new Error("Castle token akis sifresi cozulemedi (V1/V2/V3 uyumsuz): " + (lastErr ? lastErr.message : "inflate hatasi"));
     }
 
     const metrics = _deserialize(decompressed);
 
-    // V2: once lr() decode, sonra cleanStr (siralama duzeltmesi)
-    // 683-764 arasi kd() kodlu prob sureleri — lr decode ATLANMALI
+    // Versiyona gore string deobfuscation ve prob suresi ayristirma
     const cleaned = metrics.map((val, idx) => {
-        if (isV2 && idx >= PROBE_TIME_START && idx <= PROBE_TIME_END) return val;
-        const decoded = isV2 ? _lrDecodeValue(val) : val;
-        return _cleanStr(decoded);
+        if (version === 3) {
+            if (idx >= PROBE_TIME_START_V3 && idx <= PROBE_TIME_END_V3 && typeof val === 'string') {
+                const ms = _qdDecodeFloat32(val);
+                return ms !== null ? ms : val;
+            }
+            return _cleanStr(_v3DecodeValue(val));
+        }
+        if (version === 2) {
+            if (idx >= PROBE_TIME_START && idx <= PROBE_TIME_END && typeof val === 'string') {
+                const ms = _kdDecodeFloat32(val);
+                return ms !== null ? ms : val;
+            }
+            return _cleanStr(_lrDecodeValue(val));
+        }
+        return _cleanStr(val);
     });
 
     const m = (i, def) => cleaned.length > i && cleaned[i] != null ? cleaned[i] : def;
 
-    const botDetected = _isBoolTrue(cleaned, 44);
-    const webdriver = _isBoolTrue(cleaned, 22);
-    const headless = _isBoolTrue(cleaned, 143);
-    const devtools = _isBoolTrue(cleaned, 151);
-    const cdp = _isBoolTrue(cleaned, 383);
+    let botDetected, webdriver, headless, devtools, cdp;
+    if (version === 3) {
+        webdriver = _isBoolTrue(cleaned, 43) || _isBoolTrue(cleaned, 506);
+        headless = _isBoolTrue(cleaned, 355);
+        const cdpVal = m(445, "N");
+        cdp = (typeof cdpVal === 'string' && cdpVal !== "N") || _isBoolTrue(cleaned, 445);
+        devtools = cdp;
+        botDetected = webdriver || headless ||
+            _isBoolTrue(cleaned, 68) || _isBoolTrue(cleaned, 92) ||
+            _isBoolTrue(cleaned, 176) || _isBoolTrue(cleaned, 218) ||
+            _isBoolTrue(cleaned, 228) || _isBoolTrue(cleaned, 244) ||
+            _isBoolTrue(cleaned, 416) || _isBoolTrue(cleaned, 527) ||
+            _isBoolTrue(cleaned, 535);
+    } else {
+        botDetected = _isBoolTrue(cleaned, 44);
+        webdriver = _isBoolTrue(cleaned, 22);
+        headless = _isBoolTrue(cleaned, 143);
+        devtools = _isBoolTrue(cleaned, 151);
+        cdp = _isBoolTrue(cleaned, 383);
+    }
     const isBot = botDetected || webdriver || cdp;
 
     const isoUtc = tsMs ? new Date(tsMs).toISOString() : "Bilinmiyor";
@@ -1229,7 +1510,7 @@ function decodeCastleToken(tokenStr) {
 
     const formattedMetrics = [];
     for (let i = 0; i < cleaned.length; i++) {
-        const info = _getMetricInfo(i, cleaned[i], isV2);
+        const info = _getMetricInfo(i, cleaned[i], version);
         formattedMetrics.push({
             index: i,
             label: info.label,
@@ -1242,8 +1523,28 @@ function decodeCastleToken(tokenStr) {
 
     let clientOs, clientIp, browserBuild, deviceId, userAgent, gpuRenderer;
     let timezone, locale, pageTitle, originUrl, sessionId, platform;
+    let canvasHash, audioHash, webglGpuCode, probeSlotCount;
 
-    if (isV2) {
+    if (version === 3) {
+        clientOs = m(87, "Bilinmiyor");
+        clientIp = m(212, "Bilinmiyor");
+        const browserName = m(592, "");
+        const browserVer = m(29, m(670, "Bilinmiyor"));
+        browserBuild = browserName ? browserName + " " + browserVer : browserVer;
+        deviceId = m(160, "Bilinmiyor");
+        userAgent = m(96, "Bilinmiyor");
+        gpuRenderer = m(237, "Bilinmiyor");
+        timezone = m(89, "Bilinmiyor");
+        locale = m(64, "Bilinmiyor");
+        pageTitle = m(412, "");
+        originUrl = m(157, "");
+        sessionId = m(84, "Bilinmiyor");
+        platform = (m(125, "") + " " + m(21, "")).trim();
+        canvasHash = m(10, null);
+        audioHash = m(179, null);
+        webglGpuCode = m(265, null);
+        probeSlotCount = PROBE_TIME_END_V3 - PROBE_TIME_START_V3 + 1;
+    } else if (version === 2) {
         clientOs = m(8, "Bilinmiyor");
         clientIp = m(473, "Bilinmiyor");
         const browserName = m(101, "");
@@ -1258,6 +1559,10 @@ function decodeCastleToken(tokenStr) {
         originUrl = m(260, "");
         sessionId = m(622, "Bilinmiyor");
         platform = (m(366, "") + " " + m(368, "")).trim();
+        canvasHash = m(135, null);
+        audioHash = m(143, null);
+        webglGpuCode = m(11, null);
+        probeSlotCount = PROBE_TIME_END - PROBE_TIME_START + 1;
     } else {
         clientOs = m(59, "Bilinmiyor");
         clientIp = m(406, "Bilinmiyor");
@@ -1271,6 +1576,10 @@ function decodeCastleToken(tokenStr) {
         originUrl = "";
         sessionId = "Bilinmiyor";
         platform = m(1, 0) + "x" + m(2, 0);
+        canvasHash = m(6, null);
+        audioHash = m(8, null);
+        webglGpuCode = m(11, null);
+        probeSlotCount = PROBE_TIME_END - PROBE_TIME_START + 1;
     }
 
     return {
@@ -1335,10 +1644,10 @@ function decodeCastleToken(tokenStr) {
                 cdp_active: cdp
             },
             fingerprints: {
-                canvas_hash: isV2 ? m(135, null) : m(6, null),
-                audio_hash: isV2 ? m(143, null) : m(8, null),
-                webgl_gpu_code: m(11, null),
-                total_probe_time_slots: PROBE_TIME_END - PROBE_TIME_START + 1,
+                canvas_hash: canvasHash,
+                audio_hash: audioHash,
+                webgl_gpu_code: webglGpuCode,
+                total_probe_time_slots: probeSlotCount,
             }
         },
         formatted_metrics: formattedMetrics,
